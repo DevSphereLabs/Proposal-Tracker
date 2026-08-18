@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import DashboardNav from '@/components/DashboardNav';
-import Footer from '@/components/Footer';
 import ProposalIntro from '@/components/ProposalIntro';
 import ProposalDetailsForm from '@/components/ProposalDetailsForm';
 import CreateAccountForm from '@/components/CreateAccountForm';
@@ -75,8 +73,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <DashboardNav />
-
       <main className="flex-1 bg-gray-50 flex items-center justify-center p-8">
         <div className="max-w-6xl w-full">
           <p className="text-sm text-black">New Proposal Request</p>
@@ -109,8 +105,6 @@ export default function HomePage() {
         {/* Success popup */}
         <ProposalSentModal open={step === 'sent'} signedIn={signedIn} onDone={handleReset} />
       </main>
-
-      <Footer />
     </div>
   );
 }
