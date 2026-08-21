@@ -1,3 +1,5 @@
-export default function SubmissionDetailPage({ params }: { params: { id: string } }) {
-  return <h1>Submission {params.id}</h1>
+import ComingSoon from '@/components/ComingSoon';
+
+export default function SubmissionDetailPage() {
+  return <ComingSoon title="Submission Details" />;
 }

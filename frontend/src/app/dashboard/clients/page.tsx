@@ -1,3 +1,5 @@
+import ComingSoon from '@/components/ComingSoon';
+
 export default function ClientsPage() {
-  return <h1>Clients</h1>
+  return <ComingSoon title="Clients" />;
 }
