@@ -29,7 +29,26 @@ class MessageCreateSchema(Schema):
     body = fields.Str(required=True, validate=validate.Length(min=1, max=5000))
 
 
+# Fields the client may change from the "My Details" card. Email is excluded
+# on purpose: it's the login identity and what ties submissions to accounts.
+class ProfileUpdateSchema(Schema):
+    first_name = fields.Str(validate=validate.Length(min=1, max=100))
+    last_name = fields.Str(validate=validate.Length(min=1, max=100))
+    phone = fields.Str(validate=validate.Length(max=50))
+    company_name = fields.Str(validate=validate.Length(max=200))
+
+
+# Fields the client may change on their own proposal while it's still active
+class ProposalUpdateSchema(Schema):
+    budget_range = fields.Str(validate=validate.Length(min=1, max=50))
+    timeline_weeks = fields.Int(validate=validate.Range(min=1, max=520))
+    project_type = fields.Str(validate=validate.Length(min=1, max=50))
+    description = fields.Str(validate=validate.Length(min=1))
+
+
 message_create_schema = MessageCreateSchema()
+profile_update_schema = ProfileUpdateSchema()
+proposal_update_schema = ProposalUpdateSchema()
 
 
 def dump_client(user: Users) -> dict:

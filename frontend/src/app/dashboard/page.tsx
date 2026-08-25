@@ -110,12 +110,15 @@ export default function DashboardPage() {
                 key={proposal.id}
                 proposal={proposal}
                 defaultExpanded={index === 0}
+                onUpdated={(updated) =>
+                  setProposals((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+                }
               />
             ))
           )}
         </div>
 
-        {client && <MyDetailsCard client={client} />}
+        {client && <MyDetailsCard client={client} onUpdated={setClient} />}
       </div>
 
     </div>
