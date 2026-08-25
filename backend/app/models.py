@@ -133,6 +133,18 @@ class ProposalFiles(Base):
     uploader: Mapped['Users'] = relationship('Users')
 
 
+class Settings(Base):
+    """Team-configurable settings, one row per key with a JSON value.
+
+    Defaults live in app/util/settings.py; a row exists only once the team
+    saves a change to that key.
+    """
+    __tablename__ = 'settings'
+
+    key: Mapped[str] = mapped_column(String(50), primary_key=True)
+    value: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
 class Projects(Base):
     __tablename__ = 'projects'
 

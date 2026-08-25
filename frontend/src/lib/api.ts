@@ -4,6 +4,7 @@
 import type {
   ClientProfile,
   ManagerStatus,
+  PortalStatusColors,
   Proposal,
   ProposalDetails,
   ProposalFile,
@@ -11,6 +12,7 @@ import type {
   TeamNote,
   TeamProposalDetail,
   TeamProposalRow,
+  TeamSettings,
 } from '@/types';
 
 const TOKEN_KEY = 'auth_token';
@@ -399,4 +401,49 @@ export function deleteTeamFile(fileId: string): Promise<void> {
 
 export function downloadTeamFile(fileId: string, filename: string): Promise<void> {
   return downloadBlob(`/team/files/${fileId}/download`, filename);
+}
+
+// --- Settings ---
+
+// Pill colors for the client portal, derived from the team's status colors
+export function getPortalDisplaySettings(): Promise<PortalStatusColors> {
+  return request<{ statusColors: PortalStatusColors }>('/portal/settings', { auth: true })
+    .then((d) => d.statusColors);
+}
+
+export interface TeamSettingsPayload {
+  settings: TeamSettings;
+  // The full safe list File Types may toggle within (not persisted)
+  available_file_types: string[];
+}
+
+export function getTeamSettings(): Promise<TeamSettingsPayload> {
+  return request<TeamSettingsPayload>('/team/settings', { auth: true });
+}
+
+export function updateTeamSettings(changes: Partial<TeamSettings>): Promise<TeamSettingsPayload> {
+  return request<TeamSettingsPayload>('/team/settings', { method: 'PUT', body: changes, auth: true });
+}
+
+export function getTeamProfile(): Promise<ClientProfile> {
+  return request<{ profile: ClientProfile }>('/team/profile', { auth: true }).then((d) => d.profile);
+}
+
+// Profile fields plus an optional password change (requires the current one)
+export interface TeamProfileUpdate {
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  current_password?: string;
+  new_password?: string;
+}
+
+export function updateTeamProfile(changes: TeamProfileUpdate): Promise<ClientProfile> {
+  return request<{ profile: ClientProfile }>(
+    '/team/profile',
+    { method: 'PATCH', body: changes, auth: true }
+  ).then((d) => {
+    patchSessionUser({ firstName: d.profile.firstName, lastName: d.profile.lastName });
+    return d.profile;
+  });
 }

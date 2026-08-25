@@ -12,6 +12,7 @@ from marshmallow import ValidationError
 
 from app.models import ProposalFiles, ProposalMessages, Submissions, Users, db
 from app.util.auth import token_required
+from app.util.settings import enabled_extensions, load_settings
 from . import portal_bp
 from .schemas import (
     PORTAL_STATUS,
@@ -23,11 +24,6 @@ from .schemas import (
     profile_update_schema,
     proposal_update_schema,
 )
-
-# Documents only; no executables/scripts. Checked against the filename the
-# client sends, and the stored name on disk is a UUID we generate ourselves.
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'zip'}
-
 
 def _own_submission(submission_id):
     """The signed-in client's submission, or None (callers 404)."""
@@ -65,6 +61,19 @@ def update_me():
     db.session.commit()
 
     return jsonify({'client': dump_client(user)}), 200
+
+
+# Display settings the portal shares with the team dashboard, keyed by the
+# portal's status vocabulary so pill colors stay consistent on both sides
+@portal_bp.route('/settings', methods=['GET'])
+@token_required
+def get_display_settings():
+    colors = load_settings()['status_colors']
+    return jsonify({'statusColors': {
+        'active': colors['in_progress'],
+        'completed': colors['accepted'],
+        'declined': colors['declined'],
+    }}), 200
 
 
 # The client's proposals, optionally filtered to one tab
@@ -169,12 +178,16 @@ def upload_files(submission_id):
     if not uploads:
         return jsonify({'error': 'no files in request (use multipart field "files")'}), 400
 
+    # Extensions the team currently allows (Settings > File Types); the
+    # stored name on disk is a UUID we generate ourselves either way
+    allowed_extensions = enabled_extensions()
+
     saved = []
     for upload in uploads:
         original_name = (upload.filename or '').strip()
         extension = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
-        if not original_name or extension not in ALLOWED_EXTENSIONS:
-            allowed = ', '.join(sorted(ALLOWED_EXTENSIONS))
+        if not original_name or extension not in allowed_extensions:
+            allowed = ', '.join(sorted(allowed_extensions))
             return jsonify({'error': f'file type not allowed (allowed: {allowed})'}), 400
 
         stored_name = f'{uuid.uuid4()}.{extension}'
