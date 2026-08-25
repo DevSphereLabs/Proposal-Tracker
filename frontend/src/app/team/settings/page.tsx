@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ProfileMenu from '@/components/ProfileMenu';
 import { XIcon } from '@/components/icons';
 import {
   ApiError,
-  getSessionUser,
   getTeamProfile,
   getTeamSettings,
   updateTeamProfile,
@@ -132,12 +132,6 @@ export default function TeamSettingsPage() {
   const [passwordNote, setPasswordNote] = useState('');
 
   const themeId = useSyncExternalStore(subscribeTheme, getThemeSnapshot, () => DEFAULT_THEME);
-
-  const initials = (() => {
-    const user = getSessionUser();
-    if (!user) return 'TQ';
-    return `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase() || 'TQ';
-  })();
 
   useEffect(() => {
     let active = true;
@@ -305,9 +299,7 @@ export default function TeamSettingsPage() {
       {/* Page header */}
       <div className="bg-gray-100 rounded-2xl px-6 py-4 flex items-center justify-between shadow-md">
         <h1 className="text-2xl font-bold text-black tracking-wide">SETTINGS</h1>
-        <div className="w-12 h-12 rounded-full bg-blue-950 flex items-center justify-center">
-          <span className="text-white font-bold text-lg">{initials}</span>
-        </div>
+        <ProfileMenu settingsHref="/team/settings" />
       </div>
 
       {/* Tabs */}
