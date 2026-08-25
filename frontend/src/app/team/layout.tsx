@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import TeamSidebar from '@/components/TeamSidebar';
 import {
   getSessionSnapshot,
+  getSessionUser,
   subscribeSession,
   type SessionUser,
 } from '@/lib/api';
@@ -31,9 +32,14 @@ export default function TeamLayout({ children }: { children: React.ReactNode }) 
   const authorized = user !== null && user.role !== 'CLIENT';
 
   useEffect(() => {
-    if (!user) {
+    // Re-read the session here rather than using `user`: on a full page
+    // load the store's hydration pass briefly reports null before the real
+    // snapshot lands, and redirecting on that would bounce a signed-in
+    // member to the login page on every reload
+    const current = getSessionUser();
+    if (!current) {
       router.replace('/login');
-    } else if (user.role === 'CLIENT') {
+    } else if (current.role === 'CLIENT') {
       router.replace('/dashboard');
     }
   }, [user, router]);
