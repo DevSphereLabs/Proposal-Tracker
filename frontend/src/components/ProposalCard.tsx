@@ -5,6 +5,7 @@ import FileManager from '@/components/FileManager';
 import MessageModal from '@/components/MessageModal';
 import { ChatIcon, CircleDotIcon, EyeIcon, PencilIcon } from '@/components/icons';
 import { updateProposal } from '@/lib/api';
+import { proposalRef } from '@/lib/format';
 import type { Proposal, ProposalStatus } from '@/types';
 
 const STATUS_STYLES: Record<ProposalStatus, { label: string; className: string }> = {
@@ -107,7 +108,7 @@ export default function ProposalCard({
       <div className="bg-gray-100 p-6 flex items-start justify-between gap-6">
         <div>
           <h2 className="text-xl font-bold text-black">{proposal.title}</h2>
-          <p className="text-sm text-gray-600 mt-1">#{proposal.id}</p>
+          <p className="text-sm text-gray-600 mt-1">#{proposalRef(proposal.id)}</p>
           <p className="text-sm text-black mt-6">
             Last updated: {proposal.lastUpdated}
           </p>

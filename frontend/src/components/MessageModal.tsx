@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { XIcon } from '@/components/icons';
 import { deleteMessage, getSessionUser, sendMessage } from '@/lib/api';
+import { proposalRef } from '@/lib/format';
 import type { Proposal, ProposalMessage } from '@/types';
 
 // Initials on the message avatars: the team shows as "TQ"; the client's come
@@ -100,7 +101,7 @@ export default function MessageModal({
 
         {/* Which proposal this thread belongs to */}
         <h2 className="text-2xl font-bold text-black">{proposal.title}</h2>
-        <p className="text-sm text-gray-600 mt-1">#{proposal.id}</p>
+        <p className="text-sm text-gray-600 mt-1">#{proposalRef(proposal.id)}</p>
 
         <hr className="border-gray-300 my-4" />
 

@@ -29,11 +29,13 @@ def create_app(config_class=Config):
 
     from app.blueprints.portal import portal_bp
     from app.blueprints.submissions import submissions_bp
+    from app.blueprints.team import team_bp
     from app.blueprints.users import users_bp
 
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(submissions_bp, url_prefix='/api/submissions')
     app.register_blueprint(portal_bp, url_prefix='/api/portal')
+    app.register_blueprint(team_bp, url_prefix='/api/team')
 
     app.config['UPLOAD_DIR'].mkdir(parents=True, exist_ok=True)
 

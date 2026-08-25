@@ -1,17 +1,29 @@
 // Single client for the Flask backend. Every network call the app makes goes
 // through here. Requests hit /api/* on this origin and Next.js rewrites them to
 // the backend (see next.config.ts), so there's no cross-origin handling here.
-import type { ClientProfile, Proposal, ProposalDetails, ProposalFile, ProposalMessage } from '@/types';
+import type {
+  ClientProfile,
+  ManagerStatus,
+  Proposal,
+  ProposalDetails,
+  ProposalFile,
+  ProposalMessage,
+  TeamNote,
+  TeamProposalDetail,
+  TeamProposalRow,
+} from '@/types';
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
 
-// The signed-in client, cached from login so the nav can show initials
-// without an extra request.
+// The signed-in user, cached from login so the nav can show initials without
+// an extra request. `role` decides which dashboard they land on: CLIENT gets
+// the portal, MEMBER/ADMIN get the team's proposal manager.
 export interface SessionUser {
   email: string;
   firstName: string;
   lastName: string;
+  role: string;
 }
 
 // Thrown for any non-2xx response. `status` lets callers branch on 401/403/409.
@@ -136,16 +148,19 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 // --- Auth ---
 
-export async function login(email: string, password: string): Promise<void> {
+export async function login(email: string, password: string): Promise<SessionUser> {
   const data = await request<{ token: string; user: Record<string, string> }>(
     '/users/login',
     { method: 'POST', body: { email, password } }
   );
-  setSession(data.token, {
+  const user: SessionUser = {
     email: data.user.email,
     firstName: data.user.first_name ?? '',
     lastName: data.user.last_name ?? '',
-  });
+    role: data.user.role ?? 'CLIENT',
+  };
+  setSession(data.token, user);
+  return user;
 }
 
 interface RegisterPayload {
@@ -291,9 +306,9 @@ export function deleteFile(fileId: string): Promise<void> {
 
 // Files need the Authorization header, so fetch the blob and trigger a
 // download rather than pointing an <a> at the URL.
-export async function downloadFile(fileId: string, filename: string): Promise<void> {
+async function downloadBlob(path: string, filename: string): Promise<void> {
   const token = getToken();
-  const res = await fetch(`/api/portal/files/${fileId}/download`, {
+  const res = await fetch(`/api${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) throw await toApiError(res);
@@ -306,4 +321,82 @@ export async function downloadFile(fileId: string, filename: string): Promise<vo
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+export function downloadFile(fileId: string, filename: string): Promise<void> {
+  return downloadBlob(`/portal/files/${fileId}/download`, filename);
+}
+
+// --- Team proposal manager ---
+
+export function getTeamProposals(): Promise<TeamProposalRow[]> {
+  return request<{ proposals: TeamProposalRow[] }>('/team/proposals', { auth: true })
+    .then((d) => d.proposals);
+}
+
+export function getTeamProposal(submissionId: string): Promise<TeamProposalDetail> {
+  return request<{ proposal: TeamProposalDetail }>(`/team/proposals/${submissionId}`, { auth: true })
+    .then((d) => d.proposal);
+}
+
+// Same editable fields as the portal, plus the pipeline status
+export interface TeamProposalUpdate {
+  budget_range?: string;
+  timeline_weeks?: number;
+  project_type?: string;
+  description?: string;
+  status?: ManagerStatus;
+}
+
+export function updateTeamProposal(
+  submissionId: string,
+  changes: TeamProposalUpdate
+): Promise<TeamProposalDetail> {
+  return request<{ proposal: TeamProposalDetail }>(
+    `/team/proposals/${submissionId}`,
+    { method: 'PATCH', body: changes, auth: true }
+  ).then((d) => d.proposal);
+}
+
+export function deleteTeamProposal(submissionId: string): Promise<void> {
+  return request(`/team/proposals/${submissionId}`, { method: 'DELETE', auth: true });
+}
+
+export function addTeamNote(submissionId: string, text: string): Promise<TeamNote> {
+  return request<{ note: TeamNote }>(
+    `/team/proposals/${submissionId}/notes`,
+    { method: 'POST', body: { text }, auth: true }
+  ).then((d) => d.note);
+}
+
+export function deleteTeamNote(noteId: string): Promise<void> {
+  return request(`/team/notes/${noteId}`, { method: 'DELETE', auth: true });
+}
+
+export function sendTeamMessage(submissionId: string, body: string): Promise<ProposalMessage> {
+  return request<{ message: ProposalMessage }>(
+    `/team/proposals/${submissionId}/messages`,
+    { method: 'POST', body: { body }, auth: true }
+  ).then((d) => d.message);
+}
+
+export function deleteTeamMessage(messageId: string): Promise<void> {
+  return request(`/team/messages/${messageId}`, { method: 'DELETE', auth: true });
+}
+
+export function uploadTeamFiles(submissionId: string, files: File[]): Promise<ProposalFile[]> {
+  const form = new FormData();
+  for (const file of files) form.append('files', file);
+  return request<{ files: ProposalFile[] }>(
+    `/team/proposals/${submissionId}/files`,
+    { method: 'POST', body: form, auth: true, isForm: true }
+  ).then((d) => d.files);
+}
+
+export function deleteTeamFile(fileId: string): Promise<void> {
+  return request(`/team/files/${fileId}`, { method: 'DELETE', auth: true });
+}
+
+export function downloadTeamFile(fileId: string, filename: string): Promise<void> {
+  return downloadBlob(`/team/files/${fileId}/download`, filename);
 }

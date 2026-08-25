@@ -58,3 +58,46 @@ export interface ClientProfile {
   phone: string;
   companyName: string;
 }
+
+// --- Team proposal manager ---
+
+// Status vocabulary the manager works in (the backend maps these onto the
+// internal pipeline states).
+export type ManagerStatus = 'new' | 'in_progress' | 'accepted' | 'declined';
+
+// One row of the manager's proposals table.
+export interface TeamProposalRow {
+  id: string;
+  title: string;
+  clientName: string;
+  status: ManagerStatus;
+  created: string;
+  // ISO timestamp for sorting; `created` is for display
+  createdSort: string;
+}
+
+// An internal team note on a submission (never shown to clients).
+export interface TeamNote {
+  id: string;
+  sender: string;
+  text: string;
+  posted: string;
+}
+
+// Everything the manager's View popup shows across its tabs.
+export interface TeamProposalDetail extends TeamProposalRow {
+  client: {
+    name: string;
+    email: string;
+    phone: string;
+    company: string;
+  };
+  budget: string;
+  timelineWeeks: number;
+  projectType: string;
+  details: string;
+  updated: string;
+  notes: TeamNote[];
+  files: ProposalFile[];
+  messages: ProposalMessage[];
+}

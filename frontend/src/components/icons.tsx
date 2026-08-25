@@ -117,3 +117,75 @@ export function CircleDotIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+// House used on the team sidebar's Dashboard item
+export function HomeIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 3l9 8h-3v9h-4v-6h-4v6H6v-9H3l9-8z" />
+    </svg>
+  );
+}
+
+// People used on the team sidebar's Clients item
+export function UsersIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2 20c0-3.3 3-5.5 7-5.5s7 2.2 7 5.5v1H2v-1z" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M17.5 14.5c2.7.4 4.5 2.2 4.5 4.7V21h-4v-1c0-2-1-3.9-2.7-5.2.7-.2 1.5-.3 2.2-.3z" />
+    </svg>
+  );
+}
+
+// Bar chart used on the team sidebar's Reports item
+export function ChartIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M4 20V10h3v10H4zm6.5 0V4h3v16h-3zM17 20v-7h3v7h-3z" />
+      <path d="M3 21h18v1H3z" />
+    </svg>
+  );
+}
+
+// Gear used on the team sidebar's Settings item
+export function GearIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z" />
+    </svg>
+  );
+}
+
+// Question mark used on the team sidebar's Help item
+export function HelpIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9a2.5 2.5 0 1 1 3.4 2.33c-.75.29-1.4.92-1.4 1.72V14" />
+      <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+// Arrow-out-of-door used on the team sidebar's Logout item
+export function LogoutIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
+  );
+}
+
+// Down-pointing chevron used on dropdown buttons
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 9l7 7 7-7" />
+    </svg>
+  );
+}

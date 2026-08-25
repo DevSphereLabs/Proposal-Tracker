@@ -42,8 +42,9 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      await login(email.trim(), password);
-      router.push('/dashboard');
+      const user = await login(email.trim(), password);
+      // Clients land on their portal; team members on the proposal manager
+      router.push(user.role === 'CLIENT' ? '/dashboard' : '/team');
     } catch {
       setFormError('Incorrect email or password.');
     } finally {
