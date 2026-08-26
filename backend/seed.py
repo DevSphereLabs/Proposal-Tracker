@@ -7,6 +7,7 @@ files/messages) and recreates them, so you always get the same clean state.
 
 Demo login (client portal):  john@doecorp.com  /  password123
 """
+import base64
 import uuid
 from datetime import datetime, timezone
 
@@ -67,12 +68,72 @@ def wipe_client_data(client, upload_dir):
     db.session.flush()
 
 
-def make_file(submission_id, uploader_id, name, content_type, uploaded_on, upload_dir, kb=1):
+# A small valid JPEG (64x64 light blue), so seeded .jpg files actually open
+# after downloading.
+JPEG_PLACEHOLDER = base64.b64decode(
+    '/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAA'
+    'A6ABAAMAAAABAAEAAKACAAQAAAABAAAAQKADAAQAAAABAAAAQAAAAAD/7QA4UGhvdG9zaG9wIDMu'
+    'MAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+/8AAEQgAQABAAwEiAAIR'
+    'AQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAAB'
+    'fQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5'
+    'OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeo'
+    'qaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMB'
+    'AQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYS'
+    'QVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNU'
+    'VVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5'
+    'usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/bAEMAAgICAgICBAICBAYEBAQG'
+    'CAYGBgYICggICAgICgwKCgoKCgoMDAwMDAwMDA4ODg4ODhAQEBAQEhISEhISEhISEv/bAEMBAwMD'
+    'BQQFCAQECBMNCw0TExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMT'
+    'ExMTE//dAAQABP/aAAwDAQACEQMRAD8A/TSiiivpT4IKKKKACiiigAooooA//9D9NKKKK+lPggoo'
+    'ooAKKKKACiiigD//0f00ooor6U+CCiiigAooooAKKKKAP//S/TSiiivpT4IKKKKACiiigAooooA/'
+    '/9k='
+)
+
+
+def make_pdf(title):
+    """A tiny but valid one-page PDF with `title` printed on it."""
+    content = f'BT /F1 24 Tf 72 720 Td ({title}) Tj ET'.encode()
+    objects = [
+        b'<< /Type /Catalog /Pages 2 0 R >>',
+        b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] '
+        b'/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        b'<< /Length %d >>\nstream\n%s\nendstream' % (len(content), content),
+    ]
+
+    out = bytearray(b'%PDF-1.4\n')
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += b'%d 0 obj\n%s\nendobj\n' % (number, body)
+
+    xref_at = len(out)
+    out += b'xref\n0 %d\n0000000000 65535 f \n' % (len(objects) + 1)
+    for offset in offsets:
+        out += b'%010d 00000 n \n' % offset
+    out += b'trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n' % (
+        len(objects) + 1, xref_at,
+    )
+    return bytes(out)
+
+
+def placeholder_bytes(name):
+    """Real content for a seeded file, so downloads open in a viewer."""
+    ext = name.rsplit('.', 1)[-1].lower()
+    if ext == 'pdf':
+        return make_pdf(name)
+    if ext in ('jpg', 'jpeg'):
+        return JPEG_PLACEHOLDER
+    return f'Placeholder for {name}\n'.encode()
+
+
+def make_file(submission_id, uploader_id, name, content_type, uploaded_on, upload_dir):
     """Create a placeholder file on disk plus its metadata row."""
     ext = name.rsplit('.', 1)[-1].lower()
     stored_name = f'{uuid.uuid4()}.{ext}'
     path = upload_dir / stored_name
-    path.write_bytes(b'x' * (kb * 1024))
+    path.write_bytes(placeholder_bytes(name))
     return ProposalFiles(
         submission_id=submission_id,
         uploader_id=uploader_id,
@@ -164,7 +225,7 @@ def seed():
             Projects(submission_id=mobile.id, title='Mobile App', updated_at=dt(2026, 7, 2)),
             Proposals(submission_id=mobile.id, scope='iOS + Android companion app', price=12000,
                       created_at=dt(2026, 7, 1), updated_at=dt(2026, 7, 2)),
-            make_file(mobile.id, team.id, 'Wireframes.pdf', 'application/pdf', dt(2026, 7, 1), upload_dir, kb=2),
+            make_file(mobile.id, team.id, 'Wireframes.pdf', 'application/pdf', dt(2026, 7, 1), upload_dir),
             ProposalMessages(submission_id=mobile.id, sender_id=team.id,
                              body='Wireframes attached - design review starts this week', created_at=dt(2026, 7, 2)),
         ])
@@ -187,7 +248,7 @@ def seed():
             Projects(submission_id=brand.id, title='Brand Refresh', updated_at=dt(2026, 5, 30)),
             Proposals(submission_id=brand.id, scope='Logo + style guide', price=3000,
                       created_at=dt(2026, 5, 20), updated_at=dt(2026, 5, 30)),
-            make_file(brand.id, john.id, 'StyleGuide.pdf', 'application/pdf', dt(2026, 5, 28), upload_dir, kb=4),
+            make_file(brand.id, john.id, 'StyleGuide.pdf', 'application/pdf', dt(2026, 5, 28), upload_dir),
             ProposalMessages(submission_id=brand.id, sender_id=team.id,
                              body='Final style guide delivered. Thanks for working with us!', created_at=dt(2026, 5, 30)),
         ])

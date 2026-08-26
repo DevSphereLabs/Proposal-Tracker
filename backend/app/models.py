@@ -79,6 +79,7 @@ class SubmissionNotes(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     submission: Mapped['Submissions'] = relationship('Submissions', back_populates='notes')
+    author: Mapped['Users'] = relationship('Users')
 
 
 class Proposals(Base):

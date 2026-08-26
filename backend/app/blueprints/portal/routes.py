@@ -5,6 +5,7 @@ client's own submissions — an ID belonging to another client 404s (never 403,
 so IDs can't be probed).
 """
 import uuid
+from datetime import datetime, timezone
 
 from flask import current_app, jsonify, request, send_file
 from marshmallow import ValidationError
@@ -104,6 +105,10 @@ def update_proposal(submission_id):
 
     for field, value in data.items():
         setattr(submission, field, value.strip() if isinstance(value, str) else value)
+
+    # Surface the edit on both dashboards' "last updated" dates
+    if data and submission.proposal:
+        submission.proposal.updated_at = datetime.now(timezone.utc)
     db.session.commit()
 
     return jsonify({'proposal': dump_proposal(submission)}), 200

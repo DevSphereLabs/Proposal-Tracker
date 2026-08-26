@@ -46,8 +46,19 @@ export default function DashboardPage() {
     }
 
     load();
+
+    // Refresh whenever the tab regains focus, so changes made by the team
+    // (status moves, edits, replies) show up without a manual reload
+    function refresh() {
+      if (document.visibilityState === 'visible') load();
+    }
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+
     return () => {
       active = false;
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
     };
   }, [router]);
 
