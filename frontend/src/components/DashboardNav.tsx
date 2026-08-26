@@ -2,10 +2,10 @@
 
 import { useMemo, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import ProfileMenu from '@/components/ProfileMenu';
 import { ShieldIcon } from '@/components/icons';
 import {
-  clearSession,
   getSessionSnapshot,
   subscribeSession,
   type SessionUser,
@@ -25,7 +25,6 @@ const NAV_ITEMS = [
 export default function DashboardNav() {
   // Current URL path, used to highlight the active tab
   const pathname = usePathname();
-  const router = useRouter();
 
   // Signed-in client, read from the session store. Server-renders as null
   // (no localStorage) and updates on sign-in/out via the store subscription.
@@ -39,22 +38,22 @@ export default function DashboardNav() {
     }
   }, [raw]);
 
-  const initials = user
-    ? `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase()
-    : '';
-
-  function handleSignOut() {
-    clearSession();
-    router.push('/login');
-  }
-
   return (
     <nav className="bg-gray-200 border-b border-gray-300">
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
 
-        {/* Brand: logo badge plus company name, links back to the home page
-            (the proposal intake form) */}
-        <Link href="/" className="flex items-center gap-3">
+        {/* Brand: logo badge plus company name. Goes to the home page, or
+            refreshes when already on the dashboard */}
+        <Link
+          href="/"
+          onClick={(e) => {
+            if (pathname === '/dashboard') {
+              e.preventDefault();
+              window.location.reload();
+            }
+          }}
+          className="flex items-center gap-3"
+        >
           <div className="w-12 h-12 rounded-full bg-blue-700 border-2 border-blue-900 flex items-center justify-center shrink-0">
             <ShieldIcon className="w-6 h-6 text-white" />
           </div>
@@ -80,17 +79,10 @@ export default function DashboardNav() {
           ))}
         </div>
 
-        {/* Signed-in client's initials (click to sign out), or a sign-in
-            link when there's no session */}
+        {/* Signed-in client's avatar with the Settings/Logout menu, or a
+            sign-in link when there's no session */}
         {user ? (
-          <button
-            type="button"
-            onClick={handleSignOut}
-            title="Sign out"
-            className="w-12 h-12 rounded-full bg-blue-950 flex items-center justify-center"
-          >
-            <span className="text-white font-bold text-lg">{initials}</span>
-          </button>
+          <ProfileMenu settingsHref="/dashboard/settings" />
         ) : (
           <Link href="/login" className="font-bold text-gray-800 hover:text-blue-600">
             Sign in

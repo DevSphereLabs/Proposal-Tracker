@@ -50,15 +50,26 @@ export default function TeamSidebar() {
   return (
     <aside className={`w-64 shrink-0 rounded-2xl overflow-hidden flex flex-col ${theme.sidebar} shadow-lg`}>
 
-      {/* Brand block */}
-      <div className={`${theme.brand} px-6 py-5 flex items-center gap-3`}>
+      {/* Brand block: back to the team's home page, or a refresh when
+          already there */}
+      <button
+        type="button"
+        onClick={() => {
+          if (pathname === '/team') {
+            window.location.reload();
+          } else {
+            router.push('/team');
+          }
+        }}
+        className={`${theme.brand} px-6 py-5 flex items-center gap-3 w-full text-left`}
+      >
         <div className="w-11 h-11 rounded-full bg-blue-700 border-2 border-blue-400 flex items-center justify-center shrink-0">
           <ShieldIcon className="w-6 h-6 text-white" />
         </div>
         <span className="font-bold text-white text-lg leading-tight">
           TECH<br />SQUAD
         </span>
-      </div>
+      </button>
 
       {/* Nav tabs */}
       <nav className="flex-1 py-6 space-y-1">

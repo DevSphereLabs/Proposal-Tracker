@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ProfileMenu from '@/components/ProfileMenu';
 import ProposalManagerModal from '@/components/ProposalManagerModal';
 import { ChevronDownIcon, ChevronRightIcon, EyeIcon } from '@/components/icons';
 import {
   ApiError,
   deleteTeamProposal,
-  getSessionUser,
   getTeamProposals,
   getTeamSettings,
 } from '@/lib/api';
@@ -41,12 +41,6 @@ export default function TeamProposalsPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
-
-  const initials = (() => {
-    const user = getSessionUser();
-    if (!user) return 'TQ';
-    return `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase() || 'TQ';
-  })();
 
   useEffect(() => {
     let active = true;
@@ -152,12 +146,10 @@ export default function TeamProposalsPage() {
   return (
     <div className="space-y-4">
 
-      {/* Page header: title and the signed-in member's initials */}
+      {/* Page header: title and the signed-in member's account menu */}
       <div className="bg-gray-100 rounded-2xl px-6 py-4 flex items-center justify-between shadow-md">
         <h1 className="text-2xl font-bold text-black tracking-wide">PROPOSALS</h1>
-        <div className="w-12 h-12 rounded-full bg-blue-950 flex items-center justify-center">
-          <span className="text-white font-bold text-lg">{initials}</span>
-        </div>
+        <ProfileMenu settingsHref="/team/settings" />
       </div>
 
       {/* Status filters and date sort */}
