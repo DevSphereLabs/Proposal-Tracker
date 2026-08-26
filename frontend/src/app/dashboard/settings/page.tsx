@@ -1,3 +1,5 @@
+import ComingSoon from '@/components/ComingSoon';
+
 export default function SettingsPage() {
-  return <h1>Settings</h1>
+  return <ComingSoon title="Settings" />;
 }
