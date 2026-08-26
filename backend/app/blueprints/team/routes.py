@@ -8,13 +8,16 @@ from datetime import datetime, timezone
 
 from flask import current_app, jsonify, request, send_file
 from marshmallow import ValidationError
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from app.blueprints.portal.routes import ALLOWED_EXTENSIONS
-from app.blueprints.portal.schemas import dump_file, dump_message, message_create_schema
+from app.blueprints.portal.schemas import dump_client, dump_file, dump_message, message_create_schema
 from app.models import (
-    ProposalFiles, ProposalMessages, SubmissionNotes, Submissions, db,
+    ProposalFiles, ProposalMessages, SubmissionNotes, Submissions, Users, db,
 )
 from app.util.auth import roles_required
+from app.util.settings import (
+    SAFE_EXTENSIONS, enabled_extensions, load_settings, save_settings,
+)
 from . import team_bp
 from .schemas import (
     MANAGER_STATUS,
@@ -23,12 +26,90 @@ from .schemas import (
     dump_note,
     dump_row,
     note_create_schema,
+    settings_update_schema,
+    team_profile_update_schema,
     team_proposal_update_schema,
 )
 
 
 def _submission_or_none(submission_id):
     return db.session.get(Submissions, submission_id)
+
+
+def _settings_payload():
+    return {'settings': load_settings(), 'available_file_types': SAFE_EXTENSIONS}
+
+
+# Team-configurable settings (Settings page)
+@team_bp.route('/settings', methods=['GET'])
+@roles_required('MEMBER', 'ADMIN')
+def get_settings():
+    return jsonify(_settings_payload()), 200
+
+
+@team_bp.route('/settings', methods=['PUT'])
+@roles_required('MEMBER', 'ADMIN')
+def update_settings():
+    try:
+        data = settings_update_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    # File types can only be toggled within the safe list
+    if 'file_types' in data:
+        rejected = set(data['file_types']) - set(SAFE_EXTENSIONS)
+        if rejected:
+            return jsonify({'error': f'file types not allowed: {", ".join(sorted(rejected))}'}), 400
+
+    # Colors may only target known statuses: the built-ins plus the custom
+    # list as it will be after this update
+    custom = data.get('custom_statuses', load_settings()['custom_statuses'])
+    known = set(MANAGER_STATUS_UPDATE) | {s['name'] for s in custom}
+    unknown = set(data.get('status_colors', {})) - known
+    if unknown:
+        return jsonify({'error': f'unknown statuses: {", ".join(sorted(unknown))}'}), 400
+
+    save_settings(data)
+    db.session.commit()
+
+    return jsonify(_settings_payload()), 200
+
+
+# The signed-in team member's own account (Settings > Profile)
+@team_bp.route('/profile', methods=['GET'])
+@roles_required('MEMBER', 'ADMIN')
+def get_profile():
+    user = db.session.get(Users, request.user_id)
+    if not user:
+        return jsonify({'error': 'not found'}), 404
+
+    return jsonify({'profile': dump_client(user)}), 200
+
+
+@team_bp.route('/profile', methods=['PATCH'])
+@roles_required('MEMBER', 'ADMIN')
+def update_profile():
+    user = db.session.get(Users, request.user_id)
+    if not user:
+        return jsonify({'error': 'not found'}), 404
+
+    try:
+        data = team_profile_update_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    new_password = data.pop('new_password', None)
+    current_password = data.pop('current_password', None)
+    if new_password:
+        if not current_password or not check_password_hash(user.password_hash, current_password):
+            return jsonify({'error': 'current password is incorrect'}), 403
+        user.password_hash = generate_password_hash(new_password)
+
+    for field, value in data.items():
+        setattr(user, field, value.strip())
+    db.session.commit()
+
+    return jsonify({'profile': dump_client(user)}), 200
 
 
 # The proposals table
@@ -199,12 +280,15 @@ def upload_files(submission_id):
     if not uploads:
         return jsonify({'error': 'no files in request (use multipart field "files")'}), 400
 
+    # Extensions the team currently allows (Settings > File Types)
+    allowed_extensions = enabled_extensions()
+
     saved = []
     for upload in uploads:
         original_name = (upload.filename or '').strip()
         extension = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
-        if not original_name or extension not in ALLOWED_EXTENSIONS:
-            allowed = ', '.join(sorted(ALLOWED_EXTENSIONS))
+        if not original_name or extension not in allowed_extensions:
+            allowed = ', '.join(sorted(allowed_extensions))
             return jsonify({'error': f'file type not allowed (allowed: {allowed})'}), 400
 
         stored_name = f'{uuid.uuid4()}.{extension}'

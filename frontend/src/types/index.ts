@@ -84,6 +84,26 @@ export interface TeamNote {
   posted: string;
 }
 
+// A status the team defined on the Settings page (stored; not yet
+// assignable to proposals).
+export interface CustomStatus {
+  name: string;
+  color: string;
+}
+
+// Team-configurable settings, as stored by the backend.
+export interface TeamSettings {
+  status_colors: Record<string, string>;
+  custom_statuses: CustomStatus[];
+  categories: string[];
+  file_types: string[];
+  budget_ranges: string[];
+}
+
+// Pill colors the client portal shares with the team dashboard, keyed by
+// the portal's status vocabulary.
+export type PortalStatusColors = Record<'active' | 'completed' | 'declined', string>;
+
 // Everything the manager's View popup shows across its tabs.
 export interface TeamProposalDetail extends TeamProposalRow {
   client: {

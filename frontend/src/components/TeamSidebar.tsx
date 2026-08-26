@@ -1,6 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useSyncExternalStore } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ChartIcon,
@@ -13,25 +14,33 @@ import {
   UsersIcon,
 } from '@/components/icons';
 import { clearSession } from '@/lib/api';
+import { DEFAULT_THEME, TEAM_THEMES, getThemeSnapshot, subscribeTheme } from '@/lib/theme';
 
 type IconComponent = (props: { className?: string }) => React.ReactElement;
 
-// Sidebar tabs. Only the proposal manager is built so far — the rest render
-// dimmed until their pages exist.
+// Sidebar tabs. Items without an href render dimmed until their pages exist.
 const NAV_ITEMS: { label: string; icon: IconComponent; href?: string }[] = [
   { label: 'Dashboard', icon: HomeIcon, href: '/team' },
   { label: 'Proposal', icon: ClipboardIcon, href: '/team' },
   { label: 'Clients', icon: UsersIcon },
   { label: 'Templates', icon: ClipboardIcon },
   { label: 'Reports', icon: ChartIcon },
-  { label: 'Settings', icon: GearIcon },
+  { label: 'Settings', icon: GearIcon, href: '/team/settings' },
 ];
 
 // Left-hand navigation for the internal (team-only) pages, per the proposal
 // manager mockup: brand block on top, tabs in the middle, help/logout pinned
-// to the bottom.
+// to the bottom. Colors come from the theme chosen on Settings > Theme.
 export default function TeamSidebar() {
   const router = useRouter();
+  const pathname = usePathname();
+
+  const themeId = useSyncExternalStore(subscribeTheme, getThemeSnapshot, () => DEFAULT_THEME);
+  const theme = TEAM_THEMES[themeId] ?? TEAM_THEMES[DEFAULT_THEME];
+
+  // Which tab lights up for the current page ("Dashboard" shares /team with
+  // "Proposal", which is the one the mockup highlights there)
+  const activeLabel = pathname === '/team/settings' ? 'Settings' : 'Proposal';
 
   function handleLogout() {
     clearSession();
@@ -39,10 +48,10 @@ export default function TeamSidebar() {
   }
 
   return (
-    <aside className="w-64 shrink-0 rounded-2xl overflow-hidden flex flex-col bg-indigo-500 shadow-lg">
+    <aside className={`w-64 shrink-0 rounded-2xl overflow-hidden flex flex-col ${theme.sidebar} shadow-lg`}>
 
       {/* Brand block */}
-      <div className="bg-blue-950 px-6 py-5 flex items-center gap-3">
+      <div className={`${theme.brand} px-6 py-5 flex items-center gap-3`}>
         <div className="w-11 h-11 rounded-full bg-blue-700 border-2 border-blue-400 flex items-center justify-center shrink-0">
           <ShieldIcon className="w-6 h-6 text-white" />
         </div>
@@ -59,7 +68,7 @@ export default function TeamSidebar() {
               key={item.label}
               href={item.href}
               className={`flex items-center gap-3 px-6 py-3 font-bold text-white ${
-                item.label === 'Proposal' ? 'bg-blue-700' : 'hover:bg-indigo-400'
+                item.label === activeLabel ? theme.active : theme.hover
               }`}
             >
               <item.icon className="w-5 h-5" /> {item.label}
@@ -87,7 +96,7 @@ export default function TeamSidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-6 py-2.5 font-bold text-white hover:bg-indigo-400"
+          className={`w-full flex items-center gap-3 px-6 py-2.5 font-bold text-white ${theme.hover}`}
         >
           <LogoutIcon className="w-5 h-5" /> Logout
         </button>

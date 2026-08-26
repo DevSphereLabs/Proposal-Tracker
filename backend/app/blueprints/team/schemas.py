@@ -32,6 +32,45 @@ class NoteCreateSchema(Schema):
     text = fields.Str(required=True, validate=validate.Length(min=1, max=5000))
 
 
+HEX_COLOR = validate.Regexp(r'^#[0-9a-fA-F]{6}$', error='color must be a hex value like #38bdf8')
+
+
+class CustomStatusSchema(Schema):
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=30))
+    color = fields.Str(required=True, validate=HEX_COLOR)
+
+
+# Partial update: only the keys being changed are sent. Route-level checks
+# cover what needs the current state (file types subset, known color keys).
+class SettingsUpdateSchema(Schema):
+    status_colors = fields.Dict(
+        keys=fields.Str(validate=validate.Length(min=1, max=30)),
+        values=fields.Str(validate=HEX_COLOR),
+    )
+    custom_statuses = fields.List(
+        fields.Nested(CustomStatusSchema), validate=validate.Length(max=20)
+    )
+    categories = fields.List(
+        fields.Str(validate=validate.Length(min=1, max=50)),
+        validate=validate.Length(min=1, max=25),
+    )
+    file_types = fields.List(fields.Str(), validate=validate.Length(min=1))
+    budget_ranges = fields.List(
+        fields.Str(validate=validate.Length(min=1, max=50)),
+        validate=validate.Length(min=1, max=25),
+    )
+
+
+# The signed-in team member's own account. Password changes require the
+# current password alongside the new one.
+class TeamProfileUpdateSchema(Schema):
+    first_name = fields.Str(validate=validate.Length(min=1, max=100))
+    last_name = fields.Str(validate=validate.Length(min=1, max=100))
+    phone = fields.Str(validate=validate.Length(max=50))
+    current_password = fields.Str(load_only=True)
+    new_password = fields.Str(load_only=True, validate=validate.Length(min=8, max=200))
+
+
 # Same editable fields the portal allows, plus the pipeline status
 class TeamProposalUpdateSchema(Schema):
     budget_range = fields.Str(validate=validate.Length(min=1, max=50))
@@ -42,6 +81,8 @@ class TeamProposalUpdateSchema(Schema):
 
 
 note_create_schema = NoteCreateSchema()
+settings_update_schema = SettingsUpdateSchema()
+team_profile_update_schema = TeamProfileUpdateSchema()
 team_proposal_update_schema = TeamProposalUpdateSchema()
 
 

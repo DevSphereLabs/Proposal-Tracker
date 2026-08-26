@@ -14,7 +14,7 @@ import {
   updateTeamProposal,
   uploadTeamFiles,
 } from '@/lib/api';
-import { MANAGER_STATUS_PILLS as STATUS_PILLS, proposalRef } from '@/lib/format';
+import { MANAGER_STATUS_PILLS as STATUS_PILLS, pillStyle, proposalRef } from '@/lib/format';
 import type { ManagerStatus, TeamProposalDetail } from '@/types';
 
 const TABS = ['OverView', 'Notes', 'Files', 'Messages', 'Templates'] as const;
@@ -34,11 +34,19 @@ interface Draft {
 // reported up so the table stays in sync.
 export default function ProposalManagerModal({
   submissionId,
+  statusColors,
+  categories,
+  budgetRanges,
   onClose,
   onChanged,
   onDeleted,
 }: {
   submissionId: string;
+  // Settings-driven pill colors and edit-form suggestions (defaults apply
+  // when the caller doesn't have them yet)
+  statusColors?: Record<string, string>;
+  categories?: string[];
+  budgetRanges?: string[];
   onClose: () => void;
   onChanged: (detail: TeamProposalDetail) => void;
   onDeleted: (id: string) => void;
@@ -392,7 +400,8 @@ export default function ProposalManagerModal({
                   </div>
                 </div>
                 <span
-                  className={`${pill.className} font-semibold text-xs px-4 py-1.5 rounded-full`}
+                  style={detail && statusColors?.[detail.status] ? pillStyle(statusColors[detail.status]) : undefined}
+                  className={`${detail && statusColors?.[detail.status] ? '' : pill.className} font-semibold text-xs px-4 py-1.5 rounded-full`}
                 >
                   {pill.label}
                 </span>
@@ -430,8 +439,14 @@ export default function ProposalManagerModal({
                           value={draft.budget}
                           onChange={(e) => setDraft({ ...draft, budget: e.target.value })}
                           disabled={busy}
+                          list="budget-suggestions"
                           className="w-full mt-1 rounded-md bg-white text-black text-sm px-3 py-2 border border-gray-300"
                         />
+                        <datalist id="budget-suggestions">
+                          {(budgetRanges ?? []).map((range) => (
+                            <option key={range} value={range} />
+                          ))}
+                        </datalist>
                       </div>
                       <div>
                         <p className="font-bold text-black text-sm">Time Line (weeks)</p>
@@ -451,8 +466,14 @@ export default function ProposalManagerModal({
                           value={draft.projectType}
                           onChange={(e) => setDraft({ ...draft, projectType: e.target.value })}
                           disabled={busy}
+                          list="category-suggestions"
                           className="w-full mt-1 rounded-md bg-white text-black text-sm px-3 py-2 border border-gray-300"
                         />
+                        <datalist id="category-suggestions">
+                          {(categories ?? []).map((category) => (
+                            <option key={category} value={category} />
+                          ))}
+                        </datalist>
                       </div>
                     </div>
                     <div className="mt-4">

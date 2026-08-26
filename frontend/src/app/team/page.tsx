@@ -4,9 +4,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ProposalManagerModal from '@/components/ProposalManagerModal';
 import { ChevronDownIcon, ChevronRightIcon, EyeIcon } from '@/components/icons';
-import { ApiError, deleteTeamProposal, getSessionUser, getTeamProposals } from '@/lib/api';
-import { MANAGER_STATUS_PILLS as STATUS_PILLS, proposalRef } from '@/lib/format';
-import type { ManagerStatus, TeamProposalRow } from '@/types';
+import {
+  ApiError,
+  deleteTeamProposal,
+  getSessionUser,
+  getTeamProposals,
+  getTeamSettings,
+} from '@/lib/api';
+import { MANAGER_STATUS_PILLS as STATUS_PILLS, pillStyle, proposalRef } from '@/lib/format';
+import type { ManagerStatus, TeamProposalRow, TeamSettings } from '@/types';
 
 const FILTERS: { label: string; status: ManagerStatus | 'all' }[] = [
   { label: 'ALL', status: 'all' },
@@ -24,6 +30,7 @@ export default function TeamProposalsPage() {
   const router = useRouter();
 
   const [rows, setRows] = useState<TeamProposalRow[]>([]);
+  const [settings, setSettings] = useState<TeamSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -45,9 +52,11 @@ export default function TeamProposalsPage() {
     let active = true;
 
     function load() {
-      getTeamProposals()
-        .then((list) => {
-          if (active) setRows(list);
+      Promise.all([getTeamProposals(), getTeamSettings()])
+        .then(([list, payload]) => {
+          if (!active) return;
+          setRows(list);
+          setSettings(payload.settings);
         })
         .catch((err) => {
           if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -220,6 +229,7 @@ export default function TeamProposalsPage() {
             ) : (
               paged.map((row) => {
                 const pill = STATUS_PILLS[row.status];
+                const color = settings?.status_colors[row.status];
                 return (
                   <tr key={row.id} className="border-t border-gray-300 bg-white">
                     <td className="px-4 py-3">
@@ -235,7 +245,8 @@ export default function TeamProposalsPage() {
                     <td className="px-2 py-3 text-black">{row.clientName}</td>
                     <td className="px-2 py-3">
                       <span
-                        className={`${pill.className} inline-block font-semibold text-xs px-3 py-1 rounded-full`}
+                        style={color ? pillStyle(color) : undefined}
+                        className={`${color ? '' : pill.className} inline-block font-semibold text-xs px-3 py-1 rounded-full`}
                       >
                         {pill.label}
                       </span>
@@ -336,6 +347,9 @@ export default function TeamProposalsPage() {
       {viewing && (
         <ProposalManagerModal
           submissionId={viewing}
+          statusColors={settings?.status_colors}
+          categories={settings?.categories}
+          budgetRanges={settings?.budget_ranges}
           onClose={() => setViewing(null)}
           onChanged={(detail) =>
             setRows((prev) =>

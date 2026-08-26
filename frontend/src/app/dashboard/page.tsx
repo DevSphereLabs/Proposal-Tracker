@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MyDetailsCard from '@/components/MyDetailsCard';
 import ProposalCard from '@/components/ProposalCard';
-import { ApiError, getMe, getProposals } from '@/lib/api';
-import type { ClientProfile, Proposal, ProposalStatus } from '@/types';
+import { ApiError, getMe, getPortalDisplaySettings, getProposals } from '@/lib/api';
+import type { ClientProfile, PortalStatusColors, Proposal, ProposalStatus } from '@/types';
 
 const TABS: { label: string; status: ProposalStatus }[] = [
   { label: 'Active', status: 'active' },
@@ -21,6 +21,7 @@ export default function DashboardPage() {
 
   const [client, setClient] = useState<ClientProfile | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [statusColors, setStatusColors] = useState<PortalStatusColors | null>(null);
   const [tab, setTab] = useState<ProposalStatus>('active');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,10 +31,16 @@ export default function DashboardPage() {
 
     async function load() {
       try {
-        const [me, list] = await Promise.all([getMe(), getProposals()]);
+        const [me, list, colors] = await Promise.all([
+          getMe(),
+          getProposals(),
+          // Display-only; the default palette still applies if this fails
+          getPortalDisplaySettings().catch(() => null),
+        ]);
         if (!active) return;
         setClient(me);
         setProposals(list);
+        setStatusColors(colors);
       } catch (err) {
         if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
           router.replace('/login');
@@ -120,6 +127,7 @@ export default function DashboardPage() {
               <ProposalCard
                 key={proposal.id}
                 proposal={proposal}
+                statusColors={statusColors}
                 defaultExpanded={index === 0}
                 onUpdated={(updated) =>
                   setProposals((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))

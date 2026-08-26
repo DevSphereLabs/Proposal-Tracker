@@ -5,8 +5,8 @@ import FileManager from '@/components/FileManager';
 import MessageModal from '@/components/MessageModal';
 import { ChatIcon, CircleDotIcon, EyeIcon, PencilIcon } from '@/components/icons';
 import { updateProposal } from '@/lib/api';
-import { proposalRef } from '@/lib/format';
-import type { Proposal, ProposalStatus } from '@/types';
+import { pillStyle, proposalRef } from '@/lib/format';
+import type { PortalStatusColors, Proposal, ProposalStatus } from '@/types';
 
 const STATUS_STYLES: Record<ProposalStatus, { label: string; className: string }> = {
   active: { label: 'In Progress', className: 'bg-sky-400' },
@@ -39,10 +39,14 @@ interface ProposalDraft {
 // get a single Edit section covering budget, timeline, type, and details.
 export default function ProposalCard({
   proposal,
+  statusColors,
   defaultExpanded = false,
   onUpdated,
 }: {
   proposal: Proposal;
+  // Pill colors from the team's settings; the default palette applies
+  // when they haven't loaded
+  statusColors?: PortalStatusColors | null;
   defaultExpanded?: boolean;
   onUpdated: (proposal: Proposal) => void;
 }) {
@@ -116,7 +120,8 @@ export default function ProposalCard({
 
         <div className="flex flex-col gap-2 w-40 shrink-0">
           <span
-            className={`${status.className} text-white font-semibold text-sm py-1.5 rounded-full flex items-center justify-center gap-2`}
+            style={statusColors ? pillStyle(statusColors[proposal.status]) : undefined}
+            className={`${statusColors ? '' : `${status.className} text-white`} font-semibold text-sm py-1.5 rounded-full flex items-center justify-center gap-2`}
           >
             <CircleDotIcon className="w-4 h-4" /> {status.label}
           </span>
