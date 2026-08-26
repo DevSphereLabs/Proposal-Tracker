@@ -76,6 +76,15 @@ export function clearSession() {
   notifySession();
 }
 
+// Keep the cached user in sync when the profile changes, so the nav's
+// initials update without a re-login.
+function patchSessionUser(changes: Partial<SessionUser>) {
+  const current = getSessionUser();
+  if (!current) return;
+  localStorage.setItem(USER_KEY, JSON.stringify({ ...current, ...changes }));
+  notifySession();
+}
+
 // --- Core request helper ---
 
 async function toApiError(res: Response): Promise<ApiError> {
@@ -217,8 +226,43 @@ export function getMe(): Promise<ClientProfile> {
   return request<{ client: ClientProfile }>('/portal/me', { auth: true }).then((d) => d.client);
 }
 
+// Editable "My Details" fields. Email stays fixed: it's the login identity
+// and what links submissions to the account.
+export interface ProfileUpdate {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  company_name: string;
+}
+
+export function updateMe(changes: ProfileUpdate): Promise<ClientProfile> {
+  return request<{ client: ClientProfile }>(
+    '/portal/me',
+    { method: 'PATCH', body: changes, auth: true }
+  ).then((d) => {
+    patchSessionUser({ firstName: d.client.firstName, lastName: d.client.lastName });
+    return d.client;
+  });
+}
+
 export function getProposals(): Promise<Proposal[]> {
   return request<{ proposals: Proposal[] }>('/portal/proposals', { auth: true }).then((d) => d.proposals);
+}
+
+// Editable proposal fields; the backend only accepts these while the
+// proposal is still active.
+export interface ProposalUpdate {
+  budget_range: string;
+  timeline_weeks: number;
+  project_type: string;
+  description: string;
+}
+
+export function updateProposal(submissionId: string, changes: ProposalUpdate): Promise<Proposal> {
+  return request<{ proposal: Proposal }>(
+    `/portal/proposals/${submissionId}`,
+    { method: 'PATCH', body: changes, auth: true }
+  ).then((d) => d.proposal);
 }
 
 export function sendMessage(submissionId: string, body: string): Promise<ProposalMessage> {

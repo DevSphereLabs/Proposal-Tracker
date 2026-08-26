@@ -19,6 +19,8 @@ from .schemas import (
     dump_file,
     dump_proposal,
     message_create_schema,
+    profile_update_schema,
+    proposal_update_schema,
 )
 
 # Documents only; no executables/scripts. Checked against the filename the
@@ -45,6 +47,25 @@ def get_me():
     return jsonify({'client': dump_client(user)}), 200
 
 
+@portal_bp.route('/me', methods=['PATCH'])
+@token_required
+def update_me():
+    user = db.session.get(Users, request.user_id)
+    if not user:
+        return jsonify({'error': 'not found'}), 404
+
+    try:
+        data = profile_update_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    for field, value in data.items():
+        setattr(user, field, value.strip())
+    db.session.commit()
+
+    return jsonify({'client': dump_client(user)}), 200
+
+
 # The client's proposals, optionally filtered to one tab
 @portal_bp.route('/proposals', methods=['GET'])
 @token_required
@@ -62,6 +83,30 @@ def get_proposals():
         proposals = [p for p in proposals if p['status'] == status]
 
     return jsonify({'proposals': proposals}), 200
+
+
+@portal_bp.route('/proposals/<submission_id>', methods=['PATCH'])
+@token_required
+def update_proposal(submission_id):
+    submission = _own_submission(submission_id)
+    if not submission:
+        return jsonify({'error': 'not found'}), 404
+
+    # Completed and declined proposals are a record of what was agreed (or
+    # turned down) — only in-flight ones stay editable
+    if PORTAL_STATUS.get(submission.status, 'active') != 'active':
+        return jsonify({'error': 'only active proposals can be edited'}), 409
+
+    try:
+        data = proposal_update_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    for field, value in data.items():
+        setattr(submission, field, value.strip() if isinstance(value, str) else value)
+    db.session.commit()
+
+    return jsonify({'proposal': dump_proposal(submission)}), 200
 
 
 # Message thread
