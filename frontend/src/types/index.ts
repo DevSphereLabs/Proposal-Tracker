@@ -143,6 +143,45 @@ export interface TeamClientSummary {
   proposals: TeamClientProposal[];
 }
 
+// --- Reports page ---
+
+// One bucket of a breakdown (by project type, budget range, or month).
+export interface ReportBucket {
+  label: string;
+  count: number;
+  value: number;
+}
+
+export interface ReportMonth extends ReportBucket {
+  // "2026-04"; label is the short month name
+  month: string;
+  year: number;
+}
+
+export interface TeamReport {
+  totals: { all: number } & Record<ManagerStatus, number>;
+  // Dollar totals: per open status, everything still open (new + in
+  // progress), and what was decided each way
+  value: { all: number; new: number; in_progress: number; pipeline: number; won: number; lost: number };
+  // Share of decided proposals that were accepted; null until one is decided
+  winRate: number | null;
+  avgTimelineWeeks: number;
+  avgValue: number;
+  byMonth: ReportMonth[];
+  byProjectType: ReportBucket[];
+  byBudgetRange: ReportBucket[];
+  topClients: {
+    id: string;
+    name: string;
+    company: string;
+    proposalCount: number;
+    totalValue: number;
+    wonValue: number;
+  }[];
+  recent: TeamProposalRow[];
+  generatedAt: string;
+}
+
 // Everything the manager's View popup shows across its tabs.
 export interface TeamProposalDetail extends TeamProposalRow {
   client: {

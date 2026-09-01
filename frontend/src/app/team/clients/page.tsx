@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ProfileMenu from '@/components/ProfileMenu';
 import ProposalManagerModal from '@/components/ProposalManagerModal';
+import StatTile from '@/components/StatTile';
 import { ChevronDownIcon, EyeIcon } from '@/components/icons';
 import { ApiError, getTeamClients, getTeamSettings } from '@/lib/api';
 import {
@@ -28,16 +29,6 @@ const SORTS: { key: SortKey; label: string; pick: (c: TeamClientSummary) => numb
 ];
 
 const STATUS_ORDER: ManagerStatus[] = ['new', 'in_progress', 'accepted', 'declined'];
-
-function Tile({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
-  return (
-    <div className="bg-gray-100 rounded-2xl px-5 py-4 shadow-md">
-      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-bold text-black mt-1">{value}</p>
-      {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
-    </div>
-  );
-}
 
 // Every client (and unregistered lead) with their proposals rolled up:
 // ranked by value, proposals, timeline, or recency, searchable, and each
@@ -153,14 +144,14 @@ export default function TeamClientsPage() {
 
       {/* Totals */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Tile label="Clients" value={clients.length} />
-        <Tile label="With portal accounts" value={clients.filter((c) => c.hasAccount).length} />
-        <Tile
+        <StatTile label="Clients" value={clients.length} />
+        <StatTile label="With portal accounts" value={clients.filter((c) => c.hasAccount).length} />
+        <StatTile
           label="Total value"
           value={formatMoney(totalValue)}
           hint="Priced proposals, otherwise budget estimates"
         />
-        <Tile label="Won value" value={formatMoney(wonValue)} />
+        <StatTile label="Won value" value={formatMoney(wonValue)} />
       </div>
 
       {/* Rank by, plus search */}

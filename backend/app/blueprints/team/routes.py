@@ -25,6 +25,7 @@ from .schemas import (
     client_key,
     dump_client_summary,
     dump_detail,
+    dump_report,
     dump_note,
     dump_row,
     note_create_schema,
@@ -127,6 +128,13 @@ def list_clients():
     clients.sort(key=lambda c: c['totalValue'], reverse=True)
 
     return jsonify({'clients': clients}), 200
+
+
+# Reports: the whole pipeline rolled up for the Reports page
+@team_bp.route('/reports', methods=['GET'])
+@roles_required('MEMBER', 'ADMIN')
+def get_report():
+    return jsonify({'report': dump_report(db.session.query(Submissions).all())}), 200
 
 
 # The proposals table
