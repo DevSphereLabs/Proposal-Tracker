@@ -145,6 +145,30 @@ class Settings(Base):
     value: Mapped[dict] = mapped_column(JSON, nullable=False)
 
 
+class Templates(Base):
+    """A reusable starting point for a proposal: the project type, budget,
+    timeline, and write-up, saved from a submission the team has already
+    worked on (or written from scratch on the Templates page). Applying one
+    to a proposal copies these fields onto it.
+    """
+    __tablename__ = 'templates'
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    project_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    budget_range: Mapped[str] = mapped_column(String(50), nullable=False)
+    timeline_weeks: Mapped[int] = mapped_column(Integer, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    # The submission it was saved from, if any (cleared if that's deleted)
+    source_submission_id: Mapped[str] = mapped_column(String, ForeignKey('submissions.id'), nullable=True)
+    created_by: Mapped[str] = mapped_column(String, ForeignKey('users.id'), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    source: Mapped['Submissions'] = relationship('Submissions')
+    author: Mapped['Users'] = relationship('Users')
+
+
 class Projects(Base):
     __tablename__ = 'projects'
 

@@ -182,6 +182,26 @@ export interface TeamReport {
   generatedAt: string;
 }
 
+// --- Templates ---
+
+// A reusable starting point for a proposal, saved from one the team has
+// worked on (or written from scratch). Applying it to a proposal copies
+// the type, budget, timeline, and details onto it.
+export interface TeamTemplate {
+  id: string;
+  name: string;
+  projectType: string;
+  budget: string;
+  timelineWeeks: number;
+  details: string;
+  // The proposal it was saved from, when there is one
+  sourceId: string | null;
+  sourceTitle: string | null;
+  createdBy: string;
+  created: string;
+  updated: string;
+}
+
 // Everything the manager's View popup shows across its tabs.
 export interface TeamProposalDetail extends TeamProposalRow {
   client: {

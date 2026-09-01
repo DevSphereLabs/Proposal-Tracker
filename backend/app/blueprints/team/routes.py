@@ -12,7 +12,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.blueprints.portal.schemas import dump_client, dump_file, dump_message, message_create_schema
 from app.models import (
-    ProposalFiles, ProposalMessages, SubmissionNotes, Submissions, Users, db,
+    ProposalFiles, ProposalMessages, SubmissionNotes, Submissions, Templates, Users, db,
 )
 from app.util.auth import roles_required
 from app.util.settings import (
@@ -28,10 +28,13 @@ from .schemas import (
     dump_report,
     dump_note,
     dump_row,
+    dump_template,
     note_create_schema,
     settings_update_schema,
     team_profile_update_schema,
     team_proposal_update_schema,
+    template_create_schema,
+    template_update_schema,
 )
 
 
@@ -206,8 +209,89 @@ def delete_proposal(submission_id):
         db.session.delete(submission.proposal)
     if submission.project:
         db.session.delete(submission.project)
+    # Templates saved from it stay, just no longer point at it
+    db.session.query(Templates).where(
+        Templates.source_submission_id == submission.id
+    ).update({'source_submission_id': None})
 
     db.session.delete(submission)
+    db.session.commit()
+
+    return jsonify({'message': 'deleted'}), 200
+
+
+# Templates: reusable starting points for proposals, saved from work the
+# team has already done (or written from scratch)
+@team_bp.route('/templates', methods=['GET'])
+@roles_required('MEMBER', 'ADMIN')
+def list_templates():
+    templates = db.session.query(Templates).order_by(Templates.updated_at.desc()).all()
+    return jsonify({'templates': [dump_template(t) for t in templates]}), 200
+
+
+@team_bp.route('/templates', methods=['POST'])
+@roles_required('MEMBER', 'ADMIN')
+def create_template():
+    try:
+        data = template_create_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    # Start from an existing proposal: anything not given comes from it
+    source_id = data.pop('source_submission_id', None)
+    source = _submission_or_none(source_id) if source_id else None
+    if source_id and not source:
+        return jsonify({'error': 'source proposal not found'}), 404
+    if source:
+        data.setdefault('project_type', source.project_type)
+        data.setdefault('budget_range', source.budget_range)
+        data.setdefault('timeline_weeks', source.timeline_weeks)
+        data.setdefault('description', source.description)
+
+    missing = [f for f in ('project_type', 'budget_range', 'timeline_weeks', 'description') if f not in data]
+    if missing:
+        return jsonify({'error': f'{", ".join(missing)} required (or pick a source proposal)'}), 400
+
+    template = Templates(
+        **{k: v.strip() if isinstance(v, str) else v for k, v in data.items()},
+        source_submission_id=source.id if source else None,
+        created_by=request.user_id,
+    )
+    db.session.add(template)
+    db.session.commit()
+
+    return jsonify({'template': dump_template(template)}), 201
+
+
+@team_bp.route('/templates/<template_id>', methods=['PATCH'])
+@roles_required('MEMBER', 'ADMIN')
+def update_template(template_id):
+    template = db.session.get(Templates, template_id)
+    if not template:
+        return jsonify({'error': 'not found'}), 404
+
+    try:
+        data = template_update_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    for field, value in data.items():
+        setattr(template, field, value.strip() if isinstance(value, str) else value)
+    if data:
+        template.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+
+    return jsonify({'template': dump_template(template)}), 200
+
+
+@team_bp.route('/templates/<template_id>', methods=['DELETE'])
+@roles_required('MEMBER', 'ADMIN')
+def delete_template(template_id):
+    template = db.session.get(Templates, template_id)
+    if not template:
+        return jsonify({'error': 'not found'}), 404
+
+    db.session.delete(template)
     db.session.commit()
 
     return jsonify({'message': 'deleted'}), 200
