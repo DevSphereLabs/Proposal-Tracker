@@ -2,8 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import ProfileMenu from '@/components/ProfileMenu';
+import ClientMenu from '@/components/ClientMenu';
 import { ShieldIcon } from '@/components/icons';
 import {
   getSessionSnapshot,
@@ -11,21 +10,11 @@ import {
   type SessionUser,
 } from '@/lib/api';
 
-// Top navigation bar shown on every dashboard page (wired in via
-// app/dashboard/layout.tsx). Each tab maps to a route under /dashboard.
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Proposal', href: '/dashboard/proposals' },
-  { label: 'Clients', href: '/dashboard/clients' },
-  { label: 'Templates', href: '/dashboard/templates' },
-  { label: 'Reports', href: '/dashboard/reports' },
-  { label: 'Settings', href: '/dashboard/settings' },
-];
-
+// Top bar shown on every client page (wired in via app/dashboard/layout.tsx):
+// the Tech Squad brand on the left and the client's menu on the right. The
+// pages a client can reach live in that menu rather than as tabs here, since
+// clients only ever see their own dashboard and settings.
 export default function DashboardNav() {
-  // Current URL path, used to highlight the active tab
-  const pathname = usePathname();
-
   // Signed-in client, read from the session store. Server-renders as null
   // (no localStorage) and updates on sign-in/out via the store subscription.
   const raw = useSyncExternalStore(subscribeSession, getSessionSnapshot, () => null);
@@ -42,18 +31,9 @@ export default function DashboardNav() {
     <nav className="bg-gray-200 border-b border-gray-300">
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
 
-        {/* Brand: logo badge plus company name. Goes to the home page, or
-            refreshes when already on the dashboard */}
-        <Link
-          href="/"
-          onClick={(e) => {
-            if (pathname === '/dashboard') {
-              e.preventDefault();
-              window.location.reload();
-            }
-          }}
-          className="flex items-center gap-3"
-        >
+        {/* Brand: logo badge plus company name. Goes to the proposal request
+            form, so a signed-in client can start a new request from anywhere */}
+        <Link href="/" className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-blue-700 border-2 border-blue-900 flex items-center justify-center shrink-0">
             <ShieldIcon className="w-6 h-6 text-white" />
           </div>
@@ -62,27 +42,9 @@ export default function DashboardNav() {
           </span>
         </Link>
 
-        {/* Nav tabs: the tab matching the current path is highlighted blue */}
-        <div className="flex items-center gap-8">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={
-                pathname === item.href
-                  ? 'font-bold text-blue-600'
-                  : 'font-bold text-gray-800 hover:text-blue-600'
-              }
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-
-        {/* Signed-in client's avatar with the Settings/Logout menu, or a
-            sign-in link when there's no session */}
+        {/* Signed-in client's menu, or a sign-in link when there's no session */}
         {user ? (
-          <ProfileMenu settingsHref="/dashboard/settings" />
+          <ClientMenu />
         ) : (
           <Link href="/login" className="font-bold text-gray-800 hover:text-blue-600">
             Sign in
