@@ -9,6 +9,7 @@ import type {
   ProposalDetails,
   ProposalFile,
   ProposalMessage,
+  TeamClientSummary,
   TeamNote,
   TeamProposalDetail,
   TeamProposalRow,
@@ -404,6 +405,13 @@ export function deleteTeamFile(fileId: string): Promise<void> {
 
 export function downloadTeamFile(fileId: string, filename: string): Promise<void> {
   return downloadBlob(`/team/files/${fileId}/download`, filename);
+}
+
+// --- Clients page ---
+
+export function getTeamClients(): Promise<TeamClientSummary[]> {
+  return request<{ clients: TeamClientSummary[] }>('/team/clients', { auth: true })
+    .then((d) => d.clients);
 }
 
 // --- Settings ---

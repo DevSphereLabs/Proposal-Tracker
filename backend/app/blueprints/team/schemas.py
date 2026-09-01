@@ -8,6 +8,7 @@ from marshmallow import Schema, fields, validate
 
 from app.blueprints.portal.schemas import _short_date, dump_file, dump_message
 from app.models import SubmissionNotes, Submissions
+from app.util.value import submission_value
 
 # Internal pipeline status -> what the proposal manager displays
 MANAGER_STATUS = {
@@ -122,6 +123,56 @@ def dump_row(submission: Submissions) -> dict:
         'created': _short_date(submission.created_at),
         # ISO timestamp so the frontend can sort without parsing display dates
         'createdSort': submission.created_at.isoformat(),
+    }
+
+
+def client_key(submission: Submissions) -> str:
+    """Groups a submission under its client: the linked account when there
+    is one, otherwise the intake email (a lead who hasn't registered)."""
+    return submission.client_id or f'lead:{submission.contact_email.strip().lower()}'
+
+
+def dump_client_proposal(submission: Submissions) -> dict:
+    """One proposal in a client's expanded list on the Clients page."""
+    return {
+        'id': submission.id,
+        'title': submission.project.title if submission.project else submission.project_type,
+        'status': MANAGER_STATUS.get(submission.status, 'new'),
+        'budget': submission.budget_range,
+        'value': submission_value(submission),
+        'timelineWeeks': submission.timeline_weeks,
+        'created': _short_date(submission.created_at),
+        'createdSort': submission.created_at.isoformat(),
+    }
+
+
+def dump_client_summary(submissions: list) -> dict:
+    """A client with every submission grouped under them, plus the totals
+    the Clients page ranks by. All `submissions` must share a client_key."""
+    by_date = sorted(submissions, key=lambda s: s.created_at)
+    earliest, latest = by_date[0], by_date[-1]
+    client = latest.client
+
+    counts = {key: 0 for key in MANAGER_STATUS_UPDATE}
+    for s in submissions:
+        counts[MANAGER_STATUS.get(s.status, 'new')] += 1
+
+    return {
+        'id': client.id if client else client_key(latest),
+        'name': client_name(latest),
+        'company': (client.company_name if client else '') or '',
+        'email': client.email if client else latest.contact_email,
+        'phone': (client.phone if client else '') or '',
+        'hasAccount': client is not None,
+        'proposalCount': len(submissions),
+        'counts': counts,
+        'totalValue': sum(submission_value(s) for s in submissions),
+        'wonValue': sum(submission_value(s) for s in submissions if s.status == 'WON'),
+        'avgTimelineWeeks': round(sum(s.timeline_weeks for s in submissions) / len(submissions), 1),
+        'firstCreated': _short_date(earliest.created_at),
+        'lastCreated': _short_date(latest.created_at),
+        'lastCreatedSort': latest.created_at.isoformat(),
+        'proposals': [dump_client_proposal(s) for s in reversed(by_date)],
     }
 
 

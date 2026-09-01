@@ -9,6 +9,17 @@ export function proposalRef(id: string): string {
   return `PR-${id.slice(0, 8).toUpperCase()}`;
 }
 
+// Whole-dollar display for proposal values and totals (e.g. "$12,000").
+const MONEY = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+});
+
+export function formatMoney(value: number): string {
+  return MONEY.format(value);
+}
+
 // Status pill label and colors for the manager's status vocabulary. The
 // className palette is the default; when the team picks custom colors on
 // the Settings page, pills render those via pillStyle() instead.
