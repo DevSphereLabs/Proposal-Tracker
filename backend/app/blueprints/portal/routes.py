@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from flask import current_app, jsonify, request, send_file
 from marshmallow import ValidationError
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.models import ProposalFiles, ProposalMessages, Submissions, Users, db
 from app.util.auth import token_required
@@ -55,6 +56,13 @@ def update_me():
         data = profile_update_schema.load(request.json)
     except ValidationError as e:
         return jsonify(e.messages), 400
+
+    new_password = data.pop('new_password', None)
+    current_password = data.pop('current_password', None)
+    if new_password:
+        if not current_password or not check_password_hash(user.password_hash, current_password):
+            return jsonify({'error': 'current password is incorrect'}), 403
+        user.password_hash = generate_password_hash(new_password)
 
     for field, value in data.items():
         setattr(user, field, value.strip())

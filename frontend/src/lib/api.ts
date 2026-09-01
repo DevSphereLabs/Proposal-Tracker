@@ -243,13 +243,16 @@ export function getMe(): Promise<ClientProfile> {
   return request<{ client: ClientProfile }>('/portal/me', { auth: true }).then((d) => d.client);
 }
 
-// Editable "My Details" fields. Email stays fixed: it's the login identity
-// and what links submissions to the account.
+// Editable "My Details" fields, plus an optional password change (requires
+// the current one). Email stays fixed: it's the login identity and what
+// links submissions to the account.
 export interface ProfileUpdate {
-  first_name: string;
-  last_name: string;
-  phone: string;
-  company_name: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  company_name?: string;
+  current_password?: string;
+  new_password?: string;
 }
 
 export function updateMe(changes: ProfileUpdate): Promise<ClientProfile> {

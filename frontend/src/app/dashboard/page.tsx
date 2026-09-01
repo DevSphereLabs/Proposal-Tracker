@@ -13,6 +13,7 @@ import {
   getProposals,
   submitProposal,
 } from '@/lib/api';
+import { usePortalTheme } from '@/lib/theme';
 import type {
   ClientProfile,
   PortalStatusColors,
@@ -36,6 +37,7 @@ const TABS: { label: string; tab: Tab }[] = [
 // to the sign-in page.
 export default function DashboardPage() {
   const router = useRouter();
+  const theme = usePortalTheme();
 
   const [client, setClient] = useState<ClientProfile | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -129,11 +131,11 @@ export default function DashboardPage() {
     <div className="min-h-full bg-gray-100">
 
       {/* Hero banner */}
-      <div className="bg-blue-950">
+      <div className={theme.banner}>
         <div className="max-w-6xl mx-auto px-6 py-8 flex items-end justify-between gap-6">
           <div>
             <h1 className="text-4xl font-bold text-white">My Proposals</h1>
-            <p className="text-blue-100 mt-1">
+            <p className={`${theme.bannerText} mt-1`}>
               Welcome back {client?.firstName} {client?.lastName}!
             </p>
           </div>
@@ -151,8 +153,8 @@ export default function DashboardPage() {
               onClick={() => switchTab(t.tab)}
               className={
                 tab === t.tab
-                  ? 'bg-blue-600 text-white font-bold px-8 py-3'
-                  : 'text-black font-bold px-8 py-3 hover:text-blue-600'
+                  ? `${theme.tabActive} text-white font-bold px-8 py-3`
+                  : `text-black font-bold px-8 py-3 ${theme.tabHover}`
               }
             >
               {t.label}
@@ -177,7 +179,7 @@ export default function DashboardPage() {
           {tab === 'new' ? (
             client && (
               <section className="rounded-2xl overflow-hidden shadow-md">
-                <div className="bg-blue-950 px-6 py-4 flex items-center gap-3">
+                <div className={`${theme.banner} px-6 py-4 flex items-center gap-3`}>
                   <ClipboardIcon className="w-6 h-6 text-white" />
                   <h2 className="text-xl font-bold text-white">New Proposal Request</h2>
                 </div>
@@ -196,6 +198,7 @@ export default function DashboardPage() {
                     }}
                     lockEmail
                     requireConsent={false}
+                    submitClassName={`${theme.button} text-white font-semibold text-sm px-8 py-2.5 rounded-full disabled:opacity-50`}
                     onSubmit={handleNewProposal}
                     isSubmitting={submitting}
                     submitError={submitError}

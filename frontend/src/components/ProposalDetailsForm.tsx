@@ -44,6 +44,7 @@ export default function ProposalDetailsForm({
   lockEmail = false,
   requireConsent = true,
   variant = 'intake',
+  submitClassName,
 }: {
   onSubmit: (details: ProposalDetails) => void;
   isSubmitting: boolean;
@@ -52,6 +53,8 @@ export default function ProposalDetailsForm({
   lockEmail?: boolean;
   requireConsent?: boolean;
   variant?: keyof typeof STYLES;
+  // Overrides the variant's submit button classes (the portal themes it)
+  submitClassName?: string;
 }) {
   const css = STYLES[variant];
 
@@ -293,7 +296,7 @@ export default function ProposalDetailsForm({
 
       {/* Submit button */}
       <div className={css.buttonWrap}>
-        <button type="submit" disabled={isSubmitting} className={css.button}>
+        <button type="submit" disabled={isSubmitting} className={submitClassName ?? css.button}>
           {isSubmitting ? 'Submitting...' : 'Submit Proposal'}
         </button>
       </div>

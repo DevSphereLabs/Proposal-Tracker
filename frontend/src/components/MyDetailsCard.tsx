@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { PencilIcon, UserIcon } from '@/components/icons';
 import { updateMe } from '@/lib/api';
+import { usePortalTheme } from '@/lib/theme';
 import type { ClientProfile } from '@/types';
 
 // Right-hand card on the client portal showing the signed-in client's contact
@@ -16,6 +17,7 @@ export default function MyDetailsCard({
   client: ClientProfile;
   onUpdated: (client: ClientProfile) => void;
 }) {
+  const theme = usePortalTheme();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(client);
   const [busy, setBusy] = useState(false);
@@ -66,7 +68,7 @@ export default function MyDetailsCard({
 
   return (
     <aside className="rounded-2xl overflow-hidden shadow-md">
-      <div className="bg-blue-950 px-6 py-4 flex items-center justify-between gap-3">
+      <div className={`${theme.banner} px-6 py-4 flex items-center justify-between gap-3`}>
         <div className="flex items-center gap-3">
           <UserIcon className="w-6 h-6 text-white" />
           <h2 className="text-xl font-bold text-white">My Details</h2>
@@ -75,14 +77,14 @@ export default function MyDetailsCard({
           <button
             type="button"
             onClick={startEditing}
-            className="bg-white text-blue-950 font-semibold text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5"
+            className={`bg-white ${theme.accentText} font-semibold text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5`}
           >
             <PencilIcon className="w-3 h-3" /> Edit
           </button>
         )}
       </div>
 
-      <div className="bg-gradient-to-b from-blue-500 to-blue-400 px-6 py-6 space-y-4">
+      <div className={`${theme.card} px-6 py-6 space-y-4`}>
         {fields.map((field) => (
           <div key={field.label}>
             <p className="font-bold text-black text-sm">{field.label}</p>
@@ -98,7 +100,7 @@ export default function MyDetailsCard({
               <p className="text-white text-sm break-words">{client[field.key]}</p>
             )}
             {editing && field.locked && (
-              <p className="text-blue-100 text-xs mt-0.5">Used to sign in, so it can&apos;t be changed here.</p>
+              <p className={`${theme.bannerText} text-xs mt-0.5`}>Used to sign in, so it can&apos;t be changed here.</p>
             )}
           </div>
         ))}
@@ -111,7 +113,7 @@ export default function MyDetailsCard({
               type="button"
               onClick={save}
               disabled={busy}
-              className="flex-1 bg-blue-950 text-white font-semibold text-sm py-2 rounded-full disabled:opacity-60"
+              className={`flex-1 ${theme.button} text-white font-semibold text-sm py-2 rounded-full disabled:opacity-60`}
             >
               {busy ? 'Saving...' : 'Save Changes'}
             </button>

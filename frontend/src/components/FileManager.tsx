@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { deleteFile, downloadFile, uploadFiles } from '@/lib/api';
+import { usePortalTheme } from '@/lib/theme';
 import type { ProposalFile } from '@/types';
 
 // File table inside each proposal card. The client uploads documents with the
@@ -15,6 +16,7 @@ export default function FileManager({
   proposalId: string;
   initialFiles: ProposalFile[];
 }) {
+  const theme = usePortalTheme();
   const [files, setFiles] = useState<ProposalFile[]>(initialFiles);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -96,7 +98,7 @@ export default function FileManager({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="bg-blue-950 text-white font-semibold text-sm py-1.5 px-6 rounded-full disabled:opacity-50"
+          className={`${theme.button} text-white font-semibold text-sm py-1.5 px-6 rounded-full disabled:opacity-50`}
         >
           Upload
         </button>
@@ -113,7 +115,7 @@ export default function FileManager({
       <div className="mt-3 rounded-lg overflow-hidden bg-white">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-blue-600 text-white text-left">
+            <tr className={`${theme.tabActive} text-white text-left`}>
               <th className="font-bold px-4 py-2">File Name</th>
               <th className="font-bold px-4 py-2">Type</th>
               <th className="font-bold px-4 py-2">Size</th>
@@ -158,7 +160,7 @@ export default function FileManager({
           type="button"
           onClick={handleDownload}
           disabled={selected.size === 0 || busy}
-          className="bg-blue-950 text-white font-semibold text-sm py-1.5 px-6 rounded-full disabled:opacity-50"
+          className={`${theme.button} text-white font-semibold text-sm py-1.5 px-6 rounded-full disabled:opacity-50`}
         >
           Download
         </button>
