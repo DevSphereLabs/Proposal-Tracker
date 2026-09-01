@@ -6,24 +6,34 @@ import type { ProposalDetails } from '@/types';
 // Step 1 of the proposal request flow: the project details form.
 // Owns its own field state and validation; on success it hands the values up
 // to the parent via onSubmit, which submits the proposal (no account required).
+//
+// For a signed-in client the parent passes their profile as `initial`, locks
+// the email (it's what ties the request to their account), and drops the
+// consent checkbox since they agreed to it when they registered.
 export default function ProposalDetailsForm({
   onSubmit,
   isSubmitting,
   submitError,
+  initial,
+  lockEmail = false,
+  requireConsent = true,
 }: {
   onSubmit: (details: ProposalDetails) => void;
   isSubmitting: boolean;
   submitError: boolean;
+  initial?: Partial<ProposalDetails>;
+  lockEmail?: boolean;
+  requireConsent?: boolean;
 }) {
   // Field values
-  const [projectType, setProjectType] = useState('');
-  const [timeline, setTimeline] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [budget, setBudget] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [projectDetails, setProjectDetails] = useState('');
+  const [projectType, setProjectType] = useState(initial?.projectType ?? '');
+  const [timeline, setTimeline] = useState(initial?.timeline ?? '');
+  const [firstName, setFirstName] = useState(initial?.firstName ?? '');
+  const [lastName, setLastName] = useState(initial?.lastName ?? '');
+  const [email, setEmail] = useState(initial?.email ?? '');
+  const [budget, setBudget] = useState(initial?.budget ?? '');
+  const [companyName, setCompanyName] = useState(initial?.companyName ?? '');
+  const [projectDetails, setProjectDetails] = useState(initial?.projectDetails ?? '');
   const [consent, setConsent] = useState(false);
 
   // Validation error messages (empty string means no error)
@@ -75,7 +85,7 @@ export default function ProposalDetailsForm({
       hasErrors = true;
     }
 
-    if (!consent) {
+    if (requireConsent && !consent) {
       setConsentError('You must accept this to submit.');
       hasErrors = true;
     }
@@ -168,10 +178,14 @@ export default function ProposalDetailsForm({
           <input
             type="email"
             placeholder="Email Address"
-            className="w-full rounded-md px-3 py-2 bg-white text-gray-700"
+            className="w-full rounded-md px-3 py-2 bg-white text-gray-700 disabled:bg-gray-100 disabled:text-gray-500"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={lockEmail}
           />
+          {lockEmail && (
+            <p className="text-blue-100 text-xs mt-1">Linked to your account.</p>
+          )}
           {emailError && <p className="text-red-200 text-xs mt-1">{emailError}</p>}
         </div>
         <div>
@@ -221,22 +235,24 @@ export default function ProposalDetailsForm({
         {projectDetailsError && <p className="text-red-200 text-xs mt-1">{projectDetailsError}</p>}
       </div>
 
-      {/* Consent checkbox */}
-      <div className="flex items-start gap-2 pt-2">
-        <input
-          type="checkbox"
-          id="consent"
-          className="mt-1"
-          checked={consent}
-          onChange={(e) => setConsent(e.target.checked)}
-        />
-        <div>
-          <label htmlFor="consent" className="text-black text-xs">
-            I consent to Proposal Tracker storing my information so they can respond to my inquiry
-          </label>
-          {consentError && <p className="text-red-200 text-xs mt-1">{consentError}</p>}
+      {/* Consent checkbox (first-time visitors only) */}
+      {requireConsent && (
+        <div className="flex items-start gap-2 pt-2">
+          <input
+            type="checkbox"
+            id="consent"
+            className="mt-1"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+          />
+          <div>
+            <label htmlFor="consent" className="text-black text-xs">
+              I consent to Proposal Tracker storing my information so they can respond to my inquiry
+            </label>
+            {consentError && <p className="text-red-200 text-xs mt-1">{consentError}</p>}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Submission error */}
       {submitError && (

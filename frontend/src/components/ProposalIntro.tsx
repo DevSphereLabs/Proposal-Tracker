@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { ClipboardIcon, BoltIcon, LockIcon } from '@/components/icons';
 
 // Left column of the home page's proposal request flow: the headline,
-// the three selling points, and a sign-in link for returning clients.
+// the three selling points, and a sign-in link for returning clients (or,
+// when a client is already signed in, a link back to their portal).
 const HIGHLIGHTS = [
   {
     icon: ClipboardIcon,
@@ -21,7 +22,7 @@ const HIGHLIGHTS = [
   },
 ];
 
-export default function ProposalIntro() {
+export default function ProposalIntro({ signedInAs }: { signedInAs?: string | null }) {
   return (
     <section>
       {/* Headline and supporting copy */}
@@ -47,12 +48,24 @@ export default function ProposalIntro() {
         ))}
       </div>
 
-      {/* Sign-in link for users who already have an account */}
+      {/* Signed-in clients get a way back to their portal; everyone else a
+          sign-in link */}
       <div className="mt-10">
-        <p className="font-semibold text-black text-sm">Have an account ?</p>
-        <Link href="/login" className="text-blue-600 text-sm underline">
-          Sign in
-        </Link>
+        {signedInAs ? (
+          <>
+            <p className="font-semibold text-black text-sm">Signed in as {signedInAs}</p>
+            <Link href="/dashboard" className="text-blue-600 text-sm underline">
+              Go to my dashboard
+            </Link>
+          </>
+        ) : (
+          <>
+            <p className="font-semibold text-black text-sm">Have an account ?</p>
+            <Link href="/login" className="text-blue-600 text-sm underline">
+              Sign in
+            </Link>
+          </>
+        )}
       </div>
     </section>
   );
