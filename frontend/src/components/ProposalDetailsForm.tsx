@@ -10,6 +10,32 @@ import type { ProposalDetails } from '@/types';
 // For a signed-in client the parent passes their profile as `initial`, locks
 // the email (it's what ties the request to their account), and drops the
 // consent checkbox since they agreed to it when they registered.
+//
+// `variant` picks the styling: 'intake' sits on the home page's blue card,
+// 'portal' matches the gray cards on the client dashboard.
+const STYLES = {
+  intake: {
+    label: 'block text-black text-sm mb-1',
+    required: 'text-red-300',
+    input: 'w-full rounded-md px-3 py-2 bg-white text-gray-700 disabled:bg-gray-100 disabled:text-gray-500',
+    note: 'text-blue-100 text-xs mt-1',
+    error: 'text-red-200 text-xs mt-1',
+    submitError: 'text-red-200 text-sm',
+    buttonWrap: '',
+    button: 'w-full bg-blue-950 text-white font-semibold py-3 rounded-md mt-2 disabled:opacity-50',
+  },
+  portal: {
+    label: 'block font-bold text-black text-sm mb-1',
+    required: 'text-red-500',
+    input: 'w-full rounded-md px-3 py-2 bg-white border border-gray-300 text-black text-sm disabled:bg-gray-200 disabled:text-gray-500',
+    note: 'text-gray-500 text-xs mt-1',
+    error: 'text-red-600 text-xs mt-1',
+    submitError: 'text-red-600 text-sm',
+    buttonWrap: 'flex justify-end pt-2',
+    button: 'bg-blue-950 text-white font-semibold text-sm px-8 py-2.5 rounded-full disabled:opacity-50',
+  },
+} as const;
+
 export default function ProposalDetailsForm({
   onSubmit,
   isSubmitting,
@@ -17,6 +43,7 @@ export default function ProposalDetailsForm({
   initial,
   lockEmail = false,
   requireConsent = true,
+  variant = 'intake',
 }: {
   onSubmit: (details: ProposalDetails) => void;
   isSubmitting: boolean;
@@ -24,7 +51,10 @@ export default function ProposalDetailsForm({
   initial?: Partial<ProposalDetails>;
   lockEmail?: boolean;
   requireConsent?: boolean;
+  variant?: keyof typeof STYLES;
 }) {
+  const css = STYLES[variant];
+
   // Field values
   const [projectType, setProjectType] = useState(initial?.projectType ?? '');
   const [timeline, setTimeline] = useState(initial?.timeline ?? '');
@@ -110,9 +140,9 @@ export default function ProposalDetailsForm({
       {/* Row 1: Project Type and Time Line */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-black text-sm mb-1">Project Type</label>
+          <label className={css.label}>Project Type</label>
           <select
-            className="w-full rounded-md px-3 py-2 bg-white text-gray-700"
+            className={css.input}
             value={projectType}
             onChange={(e) => setProjectType(e.target.value)}
           >
@@ -124,9 +154,9 @@ export default function ProposalDetailsForm({
           </select>
         </div>
         <div>
-          <label className="block text-black text-sm mb-1">Time Line</label>
+          <label className={css.label}>Time Line</label>
           <select
-            className="w-full rounded-md px-3 py-2 bg-white text-gray-700"
+            className={css.input}
             value={timeline}
             onChange={(e) => setTimeline(e.target.value)}
           >
@@ -142,56 +172,56 @@ export default function ProposalDetailsForm({
       {/* Row 2: First Name and Last Name */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-black text-sm mb-1">
-            First Name <span className="text-red-300">*</span>
+          <label className={css.label}>
+            First Name <span className={css.required}>*</span>
           </label>
           <input
             type="text"
             placeholder="First Name"
-            className="w-full rounded-md px-3 py-2 bg-white text-gray-700"
+            className={css.input}
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
           />
-          {firstNameError && <p className="text-red-200 text-xs mt-1">{firstNameError}</p>}
+          {firstNameError && <p className={css.error}>{firstNameError}</p>}
         </div>
         <div>
-          <label className="block text-black text-sm mb-1">
-            Last Name <span className="text-red-300">*</span>
+          <label className={css.label}>
+            Last Name <span className={css.required}>*</span>
           </label>
           <input
             type="text"
             placeholder="Last Name"
-            className="w-full rounded-md px-3 py-2 bg-white text-gray-700"
+            className={css.input}
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
           />
-          {lastNameError && <p className="text-red-200 text-xs mt-1">{lastNameError}</p>}
+          {lastNameError && <p className={css.error}>{lastNameError}</p>}
         </div>
       </div>
 
       {/* Row 3: Email and Budget */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-black text-sm mb-1">
-            Email <span className="text-red-300">*</span>
+          <label className={css.label}>
+            Email <span className={css.required}>*</span>
           </label>
           <input
             type="email"
             placeholder="Email Address"
-            className="w-full rounded-md px-3 py-2 bg-white text-gray-700 disabled:bg-gray-100 disabled:text-gray-500"
+            className={css.input}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={lockEmail}
           />
           {lockEmail && (
-            <p className="text-blue-100 text-xs mt-1">Linked to your account.</p>
+            <p className={css.note}>Linked to your account.</p>
           )}
-          {emailError && <p className="text-red-200 text-xs mt-1">{emailError}</p>}
+          {emailError && <p className={css.error}>{emailError}</p>}
         </div>
         <div>
-          <label className="block text-black text-sm mb-1">Budget</label>
+          <label className={css.label}>Budget</label>
           <select
-            className="w-full rounded-md px-3 py-2 bg-white text-gray-700"
+            className={css.input}
             value={budget}
             onChange={(e) => setBudget(e.target.value)}
           >
@@ -207,32 +237,32 @@ export default function ProposalDetailsForm({
 
       {/* Row 4: Company Name (full width) */}
       <div>
-        <label className="block text-black text-sm mb-1">
-          Company Name <span className="text-red-300">*</span>
+        <label className={css.label}>
+          Company Name <span className={css.required}>*</span>
         </label>
         <input
           type="text"
           placeholder="Company Name"
-          className="w-full rounded-md px-3 py-2 bg-white text-gray-700"
+          className={css.input}
           value={companyName}
           onChange={(e) => setCompanyName(e.target.value)}
         />
-        {companyNameError && <p className="text-red-200 text-xs mt-1">{companyNameError}</p>}
+        {companyNameError && <p className={css.error}>{companyNameError}</p>}
       </div>
 
       {/* Row 5: Project Details (full width, textarea) */}
       <div>
-        <label className="block text-black text-sm mb-1">
-          Project Details <span className="text-red-300">*</span>
+        <label className={css.label}>
+          Project Details <span className={css.required}>*</span>
         </label>
         <textarea
           placeholder="What can we help you with?"
           rows={4}
-          className="w-full rounded-md px-3 py-2 bg-white text-gray-700 resize-none"
+          className={`${css.input} resize-none`}
           value={projectDetails}
           onChange={(e) => setProjectDetails(e.target.value)}
         />
-        {projectDetailsError && <p className="text-red-200 text-xs mt-1">{projectDetailsError}</p>}
+        {projectDetailsError && <p className={css.error}>{projectDetailsError}</p>}
       </div>
 
       {/* Consent checkbox (first-time visitors only) */}
@@ -249,26 +279,24 @@ export default function ProposalDetailsForm({
             <label htmlFor="consent" className="text-black text-xs">
               I consent to Proposal Tracker storing my information so they can respond to my inquiry
             </label>
-            {consentError && <p className="text-red-200 text-xs mt-1">{consentError}</p>}
+            {consentError && <p className={css.error}>{consentError}</p>}
           </div>
         </div>
       )}
 
       {/* Submission error */}
       {submitError && (
-        <p className="text-red-200 text-sm">
+        <p className={css.submitError}>
           Something went wrong submitting your proposal. Please try again.
         </p>
       )}
 
       {/* Submit button */}
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full bg-blue-950 text-white font-semibold py-3 rounded-md mt-2 disabled:opacity-50"
-      >
-        {isSubmitting ? 'Submitting...' : 'Submit Proposal'}
-      </button>
+      <div className={css.buttonWrap}>
+        <button type="submit" disabled={isSubmitting} className={css.button}>
+          {isSubmitting ? 'Submitting...' : 'Submit Proposal'}
+        </button>
+      </div>
 
     </form>
   );
