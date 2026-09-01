@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ProfileMenu from '@/components/ProfileMenu';
 import ProposalManagerModal from '@/components/ProposalManagerModal';
-import { ChevronDownIcon, ChevronRightIcon, EyeIcon } from '@/components/icons';
+import { ChevronDownIcon, ChevronRightIcon, EyeIcon, XIcon } from '@/components/icons';
 import {
   ApiError,
   deleteTeamProposal,
   getTeamProposals,
   getTeamSettings,
+  updateTeamProposal,
 } from '@/lib/api';
 import { MANAGER_STATUS_PILLS as STATUS_PILLS, pillStyle, proposalRef } from '@/lib/format';
 import type { ManagerStatus, TeamProposalRow, TeamSettings } from '@/types';
@@ -24,8 +25,35 @@ const FILTERS: { label: string; status: ManagerStatus | 'all' }[] = [
 
 const PAGE_SIZE = 8;
 
+// How often to check for new submissions while the page is open
+const POLL_MS = 30_000;
+// How long a "new proposal" toast stays up
+const TOAST_MS = 12_000;
+// New proposals the team has already looked at, so the unseen count only
+// covers what's actually new to them. Per-browser.
+const SEEN_KEY = 'team_seen_proposals';
+
+function loadSeen(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(SEEN_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+// A proposal that arrived while the page was open
+interface Toast {
+  id: string;
+  title: string;
+  clientName: string;
+}
+
 // The team's proposal manager: every submission in one table, filterable by
-// status, sortable by date, with bulk delete and a View popup per row.
+// status, sortable by date, with bulk delete and a View popup per row. New
+// submissions are announced as they come in, and can be approved (moved to
+// In Progress) or declined straight from their row.
 export default function TeamProposalsPage() {
   const router = useRouter();
 
@@ -42,6 +70,15 @@ export default function TeamProposalsPage() {
   const [busy, setBusy] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
 
+  // Review inbox: which new proposals the team has looked at, toasts for
+  // ones that arrived while the page was open, and the row an inline
+  // Approve/Decline is acting on
+  const [seen, setSeen] = useState<Set<string>>(loadSeen);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [acting, setActing] = useState<string | null>(null);
+  // IDs from the previous load, to spot arrivals (null until the first load)
+  const knownIds = useRef<Set<string> | null>(null);
+
   useEffect(() => {
     let active = true;
 
@@ -49,6 +86,25 @@ export default function TeamProposalsPage() {
       Promise.all([getTeamProposals(), getTeamSettings()])
         .then(([list, payload]) => {
           if (!active) return;
+
+          // Anything that wasn't there last time arrived since — announce it
+          const previous = knownIds.current;
+          if (previous) {
+            const arrivals = list.filter((row) => row.status === 'new' && !previous.has(row.id));
+            if (arrivals.length > 0) {
+              setToasts((prev) => [
+                ...prev,
+                ...arrivals.map((row) => ({ id: row.id, title: row.title, clientName: row.clientName })),
+              ]);
+              for (const row of arrivals) {
+                setTimeout(() => {
+                  setToasts((prev) => prev.filter((toast) => toast.id !== row.id));
+                }, TOAST_MS);
+              }
+            }
+          }
+          knownIds.current = new Set(list.map((row) => row.id));
+
           setRows(list);
           setSettings(payload.settings);
         })
@@ -74,12 +130,61 @@ export default function TeamProposalsPage() {
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
 
+    // And keep checking in the background, so a new submission shows up —
+    // and the tab title updates — even while nobody is looking at the page
+    const timer = setInterval(load, POLL_MS);
+
     return () => {
       active = false;
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
+      clearInterval(timer);
     };
   }, [router]);
+
+  // New proposals nobody on the team has opened yet
+  const unseen = rows.filter((row) => row.status === 'new' && !seen.has(row.id));
+
+  // Show the unseen count in the tab title, so it's visible from another tab
+  useEffect(() => {
+    document.title = unseen.length > 0 ? `(${unseen.length}) Proposal Tracker` : 'Proposal Tracker';
+    return () => {
+      document.title = 'Proposal Tracker';
+    };
+  }, [unseen.length]);
+
+  function markSeen(ids: string[]) {
+    // Keep only IDs that still exist, so the stored list doesn't grow forever
+    const existing = new Set(rows.map((row) => row.id));
+    const next = new Set([...seen, ...ids].filter((id) => existing.has(id)));
+    localStorage.setItem(SEEN_KEY, JSON.stringify([...next]));
+    setSeen(next);
+  }
+
+  function dismissToast(id: string) {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }
+
+  function openView(id: string) {
+    setViewing(id);
+    markSeen([id]);
+  }
+
+  // Approve (move to In Progress) or decline a new proposal from its row
+  async function quickStatus(id: string, status: ManagerStatus) {
+    setError('');
+    setActing(id);
+    try {
+      const detail = await updateTeamProposal(id, { status });
+      setRows((prev) => prev.map((row) => (row.id === id ? { ...row, status: detail.status } : row)));
+      markSeen([id]);
+      dismissToast(id);
+    } catch {
+      setError('Could not update the status.');
+    } finally {
+      setActing(null);
+    }
+  }
 
   const counts: Record<string, number> = { all: rows.length };
   for (const row of rows) counts[row.status] = (counts[row.status] ?? 0) + 1;
@@ -139,6 +244,30 @@ export default function TeamProposalsPage() {
     }
   }
 
+  // One status filter chip; NEW also carries the unseen count
+  function filterChip(f: (typeof FILTERS)[number]) {
+    return (
+      <button
+        key={f.status}
+        type="button"
+        onClick={() => switchFilter(f.status)}
+        className={`text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${
+          filter === f.status ? 'bg-blue-200 text-blue-700' : 'bg-gray-100 text-gray-700'
+        }`}
+      >
+        {f.label} <span className="text-blue-600">{counts[f.status] ?? 0}</span>
+        {f.status === 'new' && unseen.length > 0 && (
+          <span
+            title={`${unseen.length} not yet reviewed`}
+            className="bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[10px] leading-none"
+          >
+            {unseen.length}
+          </span>
+        )}
+      </button>
+    );
+  }
+
   if (loading) {
     return <p className="text-gray-600 bg-gray-100 rounded-2xl p-8">Loading proposals...</p>;
   }
@@ -152,20 +281,34 @@ export default function TeamProposalsPage() {
         <ProfileMenu settingsHref="/team/settings" />
       </div>
 
+      {/* New proposals waiting on a first look */}
+      {unseen.length > 0 && (
+        <div className="bg-blue-100 border border-blue-300 rounded-2xl px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-sm font-semibold text-blue-950">
+            {unseen.length} new proposal{unseen.length === 1 ? '' : 's'} waiting for review
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => switchFilter('new')}
+              className="bg-blue-950 text-white font-semibold text-xs px-4 py-1.5 rounded-full"
+            >
+              Show new
+            </button>
+            <button
+              type="button"
+              onClick={() => markSeen(unseen.map((row) => row.id))}
+              className="bg-white text-black font-semibold text-xs px-4 py-1.5 rounded-full border border-gray-300"
+            >
+              Mark all seen
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Status filters and date sort */}
       <div className="flex items-center gap-3 flex-wrap px-2">
-        {FILTERS.slice(0, 3).map((f) => (
-          <button
-            key={f.status}
-            type="button"
-            onClick={() => switchFilter(f.status)}
-            className={`text-xs font-bold px-3 py-1.5 rounded-full ${
-              filter === f.status ? 'bg-blue-200 text-blue-700' : 'bg-gray-100 text-gray-700'
-            }`}
-          >
-            {f.label} <span className="text-blue-600">{counts[f.status] ?? 0}</span>
-          </button>
-        ))}
+        {FILTERS.slice(0, 3).map(filterChip)}
         <button
           type="button"
           onClick={() => setNewestFirst((prev) => !prev)}
@@ -174,18 +317,7 @@ export default function TeamProposalsPage() {
         >
           DATE <ChevronDownIcon className={`w-3 h-3 ${newestFirst ? '' : 'rotate-180'}`} />
         </button>
-        {FILTERS.slice(3).map((f) => (
-          <button
-            key={f.status}
-            type="button"
-            onClick={() => switchFilter(f.status)}
-            className={`text-xs font-bold px-3 py-1.5 rounded-full ${
-              filter === f.status ? 'bg-blue-200 text-blue-700' : 'bg-gray-100 text-gray-700'
-            }`}
-          >
-            {f.label} <span className="text-blue-600">{counts[f.status] ?? 0}</span>
-          </button>
-        ))}
+        {FILTERS.slice(3).map(filterChip)}
       </div>
 
       {/* Proposals table */}
@@ -207,7 +339,7 @@ export default function TeamProposalsPage() {
               <th className="px-2 py-3 font-bold">Client</th>
               <th className="px-2 py-3 font-bold">Status</th>
               <th className="px-2 py-3 font-bold">Created</th>
-              <th className="px-4 py-3 w-28" />
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -222,6 +354,7 @@ export default function TeamProposalsPage() {
               paged.map((row) => {
                 const pill = STATUS_PILLS[row.status];
                 const color = settings?.status_colors[row.status];
+                const isUnseen = row.status === 'new' && !seen.has(row.id);
                 return (
                   <tr key={row.id} className="border-t border-gray-300 bg-white">
                     <td className="px-4 py-3">
@@ -233,7 +366,17 @@ export default function TeamProposalsPage() {
                       />
                     </td>
                     <td className="px-2 py-3 font-semibold text-black">{proposalRef(row.id)}</td>
-                    <td className="px-2 py-3 font-semibold text-black">{row.title}</td>
+                    <td className="px-2 py-3 font-semibold text-black">
+                      <span className="inline-flex items-center gap-2">
+                        {isUnseen && (
+                          <span
+                            title="Not yet reviewed"
+                            className="w-2 h-2 rounded-full bg-blue-600 shrink-0"
+                          />
+                        )}
+                        {row.title}
+                      </span>
+                    </td>
                     <td className="px-2 py-3 text-black">{row.clientName}</td>
                     <td className="px-2 py-3">
                       <span
@@ -244,10 +387,31 @@ export default function TeamProposalsPage() {
                       </span>
                     </td>
                     <td className="px-2 py-3 text-black">{row.created}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {/* New proposals can be approved or declined right here */}
+                      {row.status === 'new' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => quickStatus(row.id, 'in_progress')}
+                            disabled={acting === row.id}
+                            className="bg-blue-950 text-white font-semibold text-sm px-4 py-1.5 rounded-full mr-2 disabled:opacity-50"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => quickStatus(row.id, 'declined')}
+                            disabled={acting === row.id}
+                            className="bg-red-500 text-white font-semibold text-sm px-4 py-1.5 rounded-full mr-2 disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
+                        </>
+                      )}
                       <button
                         type="button"
-                        onClick={() => setViewing(row.id)}
+                        onClick={() => openView(row.id)}
                         className="bg-gray-200 text-black font-semibold text-sm px-4 py-1.5 rounded-full inline-flex items-center gap-2"
                       >
                         <EyeIcon className="w-4 h-4" /> View
@@ -357,6 +521,38 @@ export default function TeamProposalsPage() {
             setViewing(null);
           }}
         />
+      )}
+
+      {/* Arrivals since the page was opened */}
+      {toasts.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-40 w-80 space-y-2">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              role="status"
+              className="bg-white border border-blue-300 rounded-xl shadow-lg px-4 py-3 flex items-start gap-3"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wide">New proposal</p>
+                <p className="text-sm font-bold text-black truncate">{toast.title}</p>
+                <p className="text-xs text-gray-600 truncate">from {toast.clientName}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    dismissToast(toast.id);
+                    openView(toast.id);
+                  }}
+                  className="mt-2 bg-blue-950 text-white font-semibold text-xs px-4 py-1 rounded-full"
+                >
+                  Review
+                </button>
+              </div>
+              <button type="button" onClick={() => dismissToast(toast.id)} aria-label="Dismiss">
+                <XIcon className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
     </div>

@@ -98,6 +98,8 @@ def dump_proposal(submission: Submissions) -> dict:
         'id': submission.id,
         'title': submission.project.title if submission.project else submission.project_type,
         'status': PORTAL_STATUS.get(submission.status, 'active'),
+        # Not picked up by the team yet — the portal shows it as Under Review
+        'underReview': submission.status == 'NEW',
         'lastUpdated': f'{last_updated.strftime("%B")} {last_updated.day}, {last_updated.year}',
         'budget': submission.budget_range,
         'timeline': f'{submission.timeline_weeks} Weeks',
