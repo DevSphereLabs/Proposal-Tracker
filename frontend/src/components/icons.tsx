@@ -189,3 +189,12 @@ export function ChevronDownIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+// Three-line hamburger used on the client nav's menu button
+export function MenuIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
