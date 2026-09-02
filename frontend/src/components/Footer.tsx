@@ -6,9 +6,7 @@ import { ShieldIcon } from '@/components/icons';
 // and a copyright line underneath.
 const FOOTER_LINKS = [
   { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Proposal', href: '/dashboard/proposals' },
-  { label: 'Clients', href: '/dashboard/clients' },
-  { label: 'Reports', href: '/dashboard/reports' },
+  { label: 'Settings', href: '/dashboard/settings' },
 ];
 
 export default function Footer() {
