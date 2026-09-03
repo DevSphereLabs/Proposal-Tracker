@@ -6,6 +6,7 @@ import MessageModal from '@/components/MessageModal';
 import { ChatIcon, CircleDotIcon, EyeIcon, PencilIcon } from '@/components/icons';
 import { updateProposal } from '@/lib/api';
 import { pillStyle, proposalRef } from '@/lib/format';
+import { usePortalTheme } from '@/lib/theme';
 import type { PortalStatusColors, Proposal, ProposalStatus } from '@/types';
 
 const STATUS_STYLES: Record<ProposalStatus, { label: string; className: string }> = {
@@ -50,6 +51,7 @@ export default function ProposalCard({
   defaultExpanded?: boolean;
   onUpdated: (proposal: Proposal) => void;
 }) {
+  const theme = usePortalTheme();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [messageOpen, setMessageOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -144,7 +146,7 @@ export default function ProposalCard({
 
       {/* Details panel: project info and the file manager */}
       {expanded && (
-        <div className="bg-gradient-to-b from-blue-400 to-blue-300 p-6">
+        <div className={`${theme.panel} p-6`}>
 
           {/* Only active proposals are editable; completed and declined ones
               are a record of what was agreed */}
@@ -153,7 +155,7 @@ export default function ProposalCard({
               <button
                 type="button"
                 onClick={startEditing}
-                className="bg-blue-950 text-white font-semibold text-sm px-4 py-1.5 rounded-full flex items-center gap-2"
+                className={`${theme.button} text-white font-semibold text-sm px-4 py-1.5 rounded-full flex items-center gap-2`}
               >
                 <PencilIcon className="w-3.5 h-3.5" /> Edit Details
               </button>
@@ -214,7 +216,7 @@ export default function ProposalCard({
                   type="button"
                   onClick={save}
                   disabled={busy}
-                  className="bg-blue-950 text-white font-semibold text-sm px-6 py-2 rounded-full disabled:opacity-60"
+                  className={`${theme.button} text-white font-semibold text-sm px-6 py-2 rounded-full disabled:opacity-60`}
                 >
                   {busy ? 'Saving...' : 'Save Changes'}
                 </button>

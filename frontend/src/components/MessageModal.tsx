@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { XIcon } from '@/components/icons';
 import { deleteMessage, getSessionUser, sendMessage } from '@/lib/api';
+import { usePortalTheme } from '@/lib/theme';
 import { proposalRef } from '@/lib/format';
 import type { Proposal, ProposalMessage } from '@/types';
 
@@ -25,6 +26,7 @@ export default function MessageModal({
     ? `${session.firstName[0] ?? ''}${session.lastName[0] ?? ''}`.toUpperCase()
     : 'ME';
 
+  const theme = usePortalTheme();
   const [messages, setMessages] = useState<ProposalMessage[]>(proposal.messages);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [draft, setDraft] = useState('');
@@ -106,7 +108,7 @@ export default function MessageModal({
         <hr className="border-gray-300 my-4" />
 
         {/* Thread header row */}
-        <div className="bg-blue-600 text-white text-sm font-bold rounded-md px-3 py-2 flex items-center gap-3">
+        <div className={`${theme.tabActive} text-white text-sm font-bold rounded-md px-3 py-2 flex items-center gap-3`}>
           <input
             type="checkbox"
             checked={allSelected}
@@ -130,7 +132,7 @@ export default function MessageModal({
                 <div
                   key={message.id}
                   className={`${
-                    isClient ? 'bg-blue-500' : 'bg-sky-300'
+                    isClient ? theme.bubble : 'bg-sky-300'
                   } rounded-lg px-3 py-2 flex items-center gap-3`}
                 >
                   {/* Only own messages can be selected for deletion */}
@@ -145,7 +147,7 @@ export default function MessageModal({
                     )}
                   </span>
                   <span className="w-10 flex justify-center">
-                    <span className="w-9 h-9 rounded-full bg-blue-950 flex items-center justify-center shrink-0">
+                    <span className={`w-9 h-9 rounded-full ${theme.button} flex items-center justify-center shrink-0`}>
                       <span className="text-white font-bold text-xs">
                         {isClient ? clientInitials : TEAM_INITIALS}
                       </span>

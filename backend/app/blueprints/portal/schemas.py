@@ -29,13 +29,17 @@ class MessageCreateSchema(Schema):
     body = fields.Str(required=True, validate=validate.Length(min=1, max=5000))
 
 
-# Fields the client may change from the "My Details" card. Email is excluded
-# on purpose: it's the login identity and what ties submissions to accounts.
+# Fields the client may change from the "My Details" card and Settings. Email
+# is excluded on purpose: it's the login identity and what ties submissions
+# to accounts. Password changes require the current password alongside the
+# new one.
 class ProfileUpdateSchema(Schema):
     first_name = fields.Str(validate=validate.Length(min=1, max=100))
     last_name = fields.Str(validate=validate.Length(min=1, max=100))
     phone = fields.Str(validate=validate.Length(max=50))
     company_name = fields.Str(validate=validate.Length(max=200))
+    current_password = fields.Str(load_only=True)
+    new_password = fields.Str(load_only=True, validate=validate.Length(min=8, max=200))
 
 
 # Fields the client may change on their own proposal while it's still active

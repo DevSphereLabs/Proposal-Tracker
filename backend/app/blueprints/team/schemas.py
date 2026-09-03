@@ -97,12 +97,27 @@ def dump_note(note: SubmissionNotes) -> dict:
     }
 
 
+def client_name(submission: Submissions) -> str:
+    """The lead's name as the team should see it.
+
+    A linked client can update their details on the portal, so prefer their
+    current profile; fall back to what was typed on the intake form for
+    submissions with no account (or a profile with no name yet).
+    """
+    client = submission.client
+    if client:
+        name = f'{client.first_name or ""} {client.last_name or ""}'.strip()
+        if name:
+            return name
+    return submission.contact_name
+
+
 def dump_row(submission: Submissions) -> dict:
     """One row of the proposals table."""
     return {
         'id': submission.id,
         'title': submission.project.title if submission.project else submission.project_type,
-        'clientName': submission.contact_name,
+        'clientName': client_name(submission),
         'status': MANAGER_STATUS.get(submission.status, 'new'),
         'created': _short_date(submission.created_at),
         # ISO timestamp so the frontend can sort without parsing display dates
@@ -118,7 +133,7 @@ def dump_detail(submission: Submissions) -> dict:
     return {
         **dump_row(submission),
         'client': {
-            'name': submission.contact_name,
+            'name': client_name(submission),
             'email': submission.contact_email,
             'phone': (client.phone if client else '') or '',
             'company': (client.company_name if client else '') or '',
