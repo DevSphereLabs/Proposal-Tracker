@@ -10,10 +10,15 @@ import { usePortalTheme } from '@/lib/theme';
 import type { PortalStatusColors, Proposal, ProposalStatus } from '@/types';
 
 const STATUS_STYLES: Record<ProposalStatus, { label: string; className: string }> = {
-  active: { label: 'In Progress', className: 'bg-sky-400' },
-  completed: { label: 'Completed', className: 'bg-green-500' },
-  declined: { label: 'Declined', className: 'bg-red-500' },
+  active: { label: 'In Progress', className: 'bg-sky-400 text-white' },
+  completed: { label: 'Completed', className: 'bg-green-500 text-white' },
+  declined: { label: 'Declined', className: 'bg-red-500 text-white' },
 };
+
+// A request the team hasn't picked up yet: still under Active, but labelled
+// so the client can see it's waiting on their review. Approving it on the
+// team dashboard turns this into In Progress.
+const UNDER_REVIEW = { label: 'Under Review', className: 'bg-gray-300 text-black' };
 
 // One read-only field inside the expanded proposal details
 function Field({ label, value }: { label: string; value: string }) {
@@ -58,7 +63,10 @@ export default function ProposalCard({
   const [draft, setDraft] = useState<ProposalDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const status = STATUS_STYLES[proposal.status];
+  const underReview = proposal.status === 'active' && proposal.underReview;
+  const pill = underReview ? UNDER_REVIEW : STATUS_STYLES[proposal.status];
+  // Which of the team's status colors this pill takes
+  const colorKey = underReview ? 'new' : proposal.status;
 
   function startEditing() {
     setDraft({
@@ -122,10 +130,10 @@ export default function ProposalCard({
 
         <div className="flex flex-col gap-2 w-40 shrink-0">
           <span
-            style={statusColors ? pillStyle(statusColors[proposal.status]) : undefined}
-            className={`${statusColors ? '' : `${status.className} text-white`} font-semibold text-sm py-1.5 rounded-full flex items-center justify-center gap-2`}
+            style={statusColors ? pillStyle(statusColors[colorKey]) : undefined}
+            className={`${statusColors ? '' : pill.className} font-semibold text-sm py-1.5 rounded-full flex items-center justify-center gap-2`}
           >
-            <CircleDotIcon className="w-4 h-4" /> {status.label}
+            <CircleDotIcon className="w-4 h-4" /> {pill.label}
           </span>
           <button
             type="button"

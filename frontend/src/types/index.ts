@@ -42,6 +42,9 @@ export interface Proposal {
   id: string;
   title: string;
   status: ProposalStatus;
+  // True until the team picks the request up (shown as "Under Review");
+  // approving it on the team dashboard flips it to In Progress
+  underReview: boolean;
   lastUpdated: string;
   budget: string;
   timeline: string;
@@ -102,7 +105,7 @@ export interface TeamSettings {
 
 // Pill colors the client portal shares with the team dashboard, keyed by
 // the portal's status vocabulary.
-export type PortalStatusColors = Record<'active' | 'completed' | 'declined', string>;
+export type PortalStatusColors = Record<'new' | 'active' | 'completed' | 'declined', string>;
 
 // Everything the manager's View popup shows across its tabs.
 export interface TeamProposalDetail extends TeamProposalRow {

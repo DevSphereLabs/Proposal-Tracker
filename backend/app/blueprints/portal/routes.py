@@ -78,6 +78,7 @@ def update_me():
 def get_display_settings():
     colors = load_settings()['status_colors']
     return jsonify({'statusColors': {
+        'new': colors['new'],
         'active': colors['in_progress'],
         'completed': colors['accepted'],
         'declined': colors['declined'],
