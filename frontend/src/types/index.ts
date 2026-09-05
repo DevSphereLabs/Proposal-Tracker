@@ -107,6 +107,42 @@ export interface TeamSettings {
 // the portal's status vocabulary.
 export type PortalStatusColors = Record<'new' | 'active' | 'completed' | 'declined', string>;
 
+// --- Clients page ---
+
+// One proposal in a client's expanded list.
+export interface TeamClientProposal {
+  id: string;
+  title: string;
+  status: ManagerStatus;
+  budget: string;
+  // Dollar value: the priced proposal when the team has set one, otherwise
+  // an estimate parsed from the budget range
+  value: number;
+  timelineWeeks: number;
+  created: string;
+  createdSort: string;
+}
+
+// A client (or unregistered lead) with their proposals rolled up.
+export interface TeamClientSummary {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  // True when they've registered for the portal (vs. an intake-only lead)
+  hasAccount: boolean;
+  proposalCount: number;
+  counts: Record<ManagerStatus, number>;
+  totalValue: number;
+  wonValue: number;
+  avgTimelineWeeks: number;
+  firstCreated: string;
+  lastCreated: string;
+  lastCreatedSort: string;
+  proposals: TeamClientProposal[];
+}
+
 // Everything the manager's View popup shows across its tabs.
 export interface TeamProposalDetail extends TeamProposalRow {
   client: {

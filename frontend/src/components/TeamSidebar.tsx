@@ -22,11 +22,16 @@ type IconComponent = (props: { className?: string }) => React.ReactElement;
 const NAV_ITEMS: { label: string; icon: IconComponent; href?: string }[] = [
   { label: 'Dashboard', icon: HomeIcon, href: '/team' },
   { label: 'Proposal', icon: ClipboardIcon, href: '/team' },
-  { label: 'Clients', icon: UsersIcon },
+  { label: 'Clients', icon: UsersIcon, href: '/team/clients' },
   { label: 'Templates', icon: ClipboardIcon },
   { label: 'Reports', icon: ChartIcon },
   { label: 'Settings', icon: GearIcon, href: '/team/settings' },
 ];
+
+const ACTIVE_BY_PATH: Record<string, string> = {
+  '/team/settings': 'Settings',
+  '/team/clients': 'Clients',
+};
 
 // Left-hand navigation for the internal (team-only) pages, per the proposal
 // manager mockup: brand block on top, tabs in the middle, help/logout pinned
@@ -40,7 +45,7 @@ export default function TeamSidebar() {
 
   // Which tab lights up for the current page ("Dashboard" shares /team with
   // "Proposal", which is the one the mockup highlights there)
-  const activeLabel = pathname === '/team/settings' ? 'Settings' : 'Proposal';
+  const activeLabel = ACTIVE_BY_PATH[pathname] ?? 'Proposal';
 
   function handleLogout() {
     clearSession();

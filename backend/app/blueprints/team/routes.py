@@ -22,6 +22,8 @@ from . import team_bp
 from .schemas import (
     MANAGER_STATUS,
     MANAGER_STATUS_UPDATE,
+    client_key,
+    dump_client_summary,
     dump_detail,
     dump_note,
     dump_row,
@@ -110,6 +112,21 @@ def update_profile():
     db.session.commit()
 
     return jsonify({'profile': dump_client(user)}), 200
+
+
+# Clients: every submission grouped under the person who sent it, with the
+# totals the Clients page ranks by (highest total value first by default)
+@team_bp.route('/clients', methods=['GET'])
+@roles_required('MEMBER', 'ADMIN')
+def list_clients():
+    groups = {}
+    for submission in db.session.query(Submissions).all():
+        groups.setdefault(client_key(submission), []).append(submission)
+
+    clients = [dump_client_summary(group) for group in groups.values()]
+    clients.sort(key=lambda c: c['totalValue'], reverse=True)
+
+    return jsonify({'clients': clients}), 200
 
 
 # The proposals table
