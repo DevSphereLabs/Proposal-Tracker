@@ -14,6 +14,7 @@ import type {
   TeamProposalDetail,
   TeamProposalRow,
   TeamReport,
+  TeamTemplate,
   TeamSettings,
 } from '@/types';
 
@@ -419,6 +420,46 @@ export function getTeamClients(): Promise<TeamClientSummary[]> {
 
 export function getTeamReport(): Promise<TeamReport> {
   return request<{ report: TeamReport }>('/team/reports', { auth: true }).then((d) => d.report);
+}
+
+// --- Templates ---
+
+// Fields of a new template. With `source_submission_id`, anything left out
+// is copied from that proposal.
+export interface TemplateInput {
+  name: string;
+  project_type?: string;
+  budget_range?: string;
+  timeline_weeks?: number;
+  description?: string;
+  source_submission_id?: string;
+}
+
+export function getTeamTemplates(): Promise<TeamTemplate[]> {
+  return request<{ templates: TeamTemplate[] }>('/team/templates', { auth: true })
+    .then((d) => d.templates);
+}
+
+export function createTeamTemplate(input: TemplateInput): Promise<TeamTemplate> {
+  return request<{ template: TeamTemplate }>('/team/templates', {
+    method: 'POST',
+    body: input,
+    auth: true,
+  }).then((d) => d.template);
+}
+
+export type TemplateChanges = Partial<Omit<TemplateInput, 'source_submission_id'>>;
+
+export function updateTeamTemplate(templateId: string, changes: TemplateChanges): Promise<TeamTemplate> {
+  return request<{ template: TeamTemplate }>(`/team/templates/${templateId}`, {
+    method: 'PATCH',
+    body: changes,
+    auth: true,
+  }).then((d) => d.template);
+}
+
+export function deleteTeamTemplate(templateId: string): Promise<void> {
+  return request(`/team/templates/${templateId}`, { method: 'DELETE', auth: true });
 }
 
 // --- Settings ---

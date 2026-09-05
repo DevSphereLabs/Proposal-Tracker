@@ -1,21 +1,23 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDownIcon, ClipboardIcon, XIcon } from '@/components/icons';
+import { ChevronDownIcon, XIcon } from '@/components/icons';
 import {
   addTeamNote,
+  createTeamTemplate,
   deleteTeamFile,
   deleteTeamMessage,
   deleteTeamNote,
   deleteTeamProposal,
   downloadTeamFile,
   getTeamProposal,
+  getTeamTemplates,
   sendTeamMessage,
   updateTeamProposal,
   uploadTeamFiles,
 } from '@/lib/api';
 import { MANAGER_STATUS_PILLS as STATUS_PILLS, pillStyle, proposalRef } from '@/lib/format';
-import type { ManagerStatus, TeamProposalDetail } from '@/types';
+import type { ManagerStatus, TeamProposalDetail, TeamTemplate } from '@/types';
 
 const TABS = ['OverView', 'Notes', 'Files', 'Messages', 'Templates'] as const;
 type Tab = (typeof TABS)[number];
@@ -30,7 +32,7 @@ interface Draft {
 
 // The proposal manager's View popup: one proposal across five tabs —
 // overview (with edit), internal notes, files, the client message thread,
-// and linked templates. Opened from the proposals table; every change is
+// and templates (save this proposal as one, or apply one to it). Opened from the proposals table; every change is
 // reported up so the table stays in sync.
 export default function ProposalManagerModal({
   submissionId,
@@ -72,6 +74,14 @@ export default function ProposalManagerModal({
   const [selectedMessages, setSelectedMessages] = useState<ReadonlySet<string>>(new Set());
   const [messageDraft, setMessageDraft] = useState('');
 
+  // Templates tab: the saved templates (fetched when the tab first opens),
+  // the name for saving this proposal as one, which template is awaiting
+  // an apply confirmation, and the last result
+  const [templates, setTemplates] = useState<TeamTemplate[] | null>(null);
+  const [templateName, setTemplateName] = useState('');
+  const [confirmApply, setConfirmApply] = useState<string | null>(null);
+  const [templateNote, setTemplateNote] = useState('');
+
   useEffect(() => {
     let active = true;
     getTeamProposal(submissionId)
@@ -89,6 +99,64 @@ export default function ProposalManagerModal({
   function apply(updated: TeamProposalDetail) {
     setDetail(updated);
     onChanged(updated);
+  }
+
+  useEffect(() => {
+    if (tab !== 'Templates' || templates !== null) return;
+    let active = true;
+    getTeamTemplates()
+      .then((list) => {
+        if (active) setTemplates(list);
+      })
+      .catch(() => {
+        if (active) setError('Could not load templates.');
+      });
+    return () => {
+      active = false;
+    };
+  }, [tab, templates]);
+
+  // --- Templates: save this proposal as one, or apply one to it ---
+
+  async function saveAsTemplate() {
+    if (!detail) return;
+    const name = templateName.trim() || `${detail.title} template`;
+    setError('');
+    setTemplateNote('');
+    setBusy(true);
+    try {
+      const created = await createTeamTemplate({ name, source_submission_id: detail.id });
+      setTemplates((prev) => [created, ...(prev ?? [])]);
+      setTemplateName('');
+      setTemplateNote(`Saved "${created.name}".`);
+    } catch {
+      setError('Could not save the template.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyTemplate(template: TeamTemplate) {
+    if (!detail) return;
+    setConfirmApply(null);
+    setError('');
+    setTemplateNote('');
+    setBusy(true);
+    try {
+      apply(
+        await updateTeamProposal(detail.id, {
+          project_type: template.projectType,
+          budget_range: template.budget,
+          timeline_weeks: template.timelineWeeks,
+          description: template.details,
+        })
+      );
+      setTemplateNote(`Applied "${template.name}" — see the OverView tab.`);
+    } catch {
+      setError('Could not apply the template.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   function toggle(
@@ -787,12 +855,103 @@ export default function ProposalManagerModal({
 
             {/* --- Templates tab --- */}
             {tab === 'Templates' && (
-              <div className="mt-4 py-10 text-center">
-                <ClipboardIcon className="w-10 h-10 text-gray-400 mx-auto" />
-                <p className="text-gray-600 font-semibold mt-3">No templates linked yet.</p>
-                <p className="text-gray-500 text-sm mt-1">
-                  Template management is coming soon.
-                </p>
+              <div className="mt-4 space-y-5">
+
+                {/* Turn this proposal into a template */}
+                <div>
+                  <p className="font-bold text-black text-sm border-b border-gray-400 pb-1">
+                    Save this proposal as a template
+                  </p>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Keeps its project type, budget, timeline, and details for reuse.
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder={`${detail.title} template`}
+                      disabled={busy}
+                      className="flex-1 rounded-md bg-white border border-gray-300 text-black text-sm px-3 py-2"
+                    />
+                    <button
+                      type="button"
+                      onClick={saveAsTemplate}
+                      disabled={busy}
+                      className="bg-black text-white font-semibold text-sm py-1.5 px-6 rounded-full disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+
+                {/* Apply a saved template to this proposal */}
+                <div>
+                  <p className="font-bold text-black text-sm border-b border-gray-400 pb-1">
+                    Apply a template
+                  </p>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Replaces this proposal&apos;s project type, budget, timeline, and details.
+                  </p>
+                  {templates === null ? (
+                    <p className="text-gray-500 text-sm mt-3">Loading templates...</p>
+                  ) : templates.length === 0 ? (
+                    <p className="text-gray-500 text-sm mt-3">
+                      No templates yet — save this proposal as one above, or create one on the
+                      Templates page.
+                    </p>
+                  ) : (
+                    <ul className="mt-3 space-y-2 max-h-56 overflow-y-auto">
+                      {templates.map((t) => (
+                        <li
+                          key={t.id}
+                          className="bg-white border border-gray-300 rounded-lg px-4 py-2.5 flex items-center gap-3"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-black text-sm truncate">{t.name}</p>
+                            <p className="text-xs text-gray-600 truncate">
+                              {t.projectType} · {t.budget} · {t.timelineWeeks} wks
+                              {t.sourceTitle ? ` · from ${t.sourceTitle}` : ''}
+                            </p>
+                          </div>
+                          {confirmApply === t.id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => applyTemplate(t)}
+                                disabled={busy}
+                                className="bg-blue-950 text-white font-semibold text-xs py-1.5 px-4 rounded-full disabled:opacity-50"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmApply(null)}
+                                disabled={busy}
+                                className="bg-gray-200 text-black font-semibold text-xs py-1.5 px-4 rounded-full disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmApply(t.id)}
+                              disabled={busy}
+                              className="bg-gray-200 text-black font-semibold text-xs py-1.5 px-4 rounded-full disabled:opacity-50"
+                            >
+                              Apply
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {templateNote && (
+                  <p className="text-green-700 text-sm font-semibold">{templateNote}</p>
+                )}
               </div>
             )}
           </>

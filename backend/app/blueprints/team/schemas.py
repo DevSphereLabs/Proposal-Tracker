@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from marshmallow import Schema, fields, validate
 
 from app.blueprints.portal.schemas import _short_date, dump_file, dump_message
-from app.models import SubmissionNotes, Submissions
+from app.models import SubmissionNotes, Submissions, Templates
 from app.util.value import submission_value
 
 # Internal pipeline status -> what the proposal manager displays
@@ -74,6 +74,25 @@ class TeamProfileUpdateSchema(Schema):
     new_password = fields.Str(load_only=True, validate=validate.Length(min=8, max=200))
 
 
+# A template's fields. On create, anything not given is copied from
+# `source_submission_id` when that's set.
+class TemplateCreateSchema(Schema):
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=120))
+    project_type = fields.Str(validate=validate.Length(min=1, max=50))
+    budget_range = fields.Str(validate=validate.Length(min=1, max=50))
+    timeline_weeks = fields.Int(validate=validate.Range(min=1, max=520))
+    description = fields.Str(validate=validate.Length(min=1))
+    source_submission_id = fields.Str()
+
+
+class TemplateUpdateSchema(Schema):
+    name = fields.Str(validate=validate.Length(min=1, max=120))
+    project_type = fields.Str(validate=validate.Length(min=1, max=50))
+    budget_range = fields.Str(validate=validate.Length(min=1, max=50))
+    timeline_weeks = fields.Int(validate=validate.Range(min=1, max=520))
+    description = fields.Str(validate=validate.Length(min=1))
+
+
 # Same editable fields the portal allows, plus the pipeline status
 class TeamProposalUpdateSchema(Schema):
     budget_range = fields.Str(validate=validate.Length(min=1, max=50))
@@ -87,6 +106,8 @@ note_create_schema = NoteCreateSchema()
 settings_update_schema = SettingsUpdateSchema()
 team_profile_update_schema = TeamProfileUpdateSchema()
 team_proposal_update_schema = TeamProposalUpdateSchema()
+template_create_schema = TemplateCreateSchema()
+template_update_schema = TemplateUpdateSchema()
 
 
 def dump_note(note: SubmissionNotes) -> dict:
@@ -125,6 +146,25 @@ def dump_row(submission: Submissions) -> dict:
         'created': _short_date(submission.created_at),
         # ISO timestamp so the frontend can sort without parsing display dates
         'createdSort': submission.created_at.isoformat(),
+    }
+
+
+def dump_template(template: Templates) -> dict:
+    source = template.source
+    author = template.author
+    initials = f'{(author.first_name or " ")[0]}{(author.last_name or " ")[0]}'.strip().upper()
+    return {
+        'id': template.id,
+        'name': template.name,
+        'projectType': template.project_type,
+        'budget': template.budget_range,
+        'timelineWeeks': template.timeline_weeks,
+        'details': template.description,
+        'sourceId': source.id if source else None,
+        'sourceTitle': (source.project.title if source.project else source.project_type) if source else None,
+        'createdBy': initials or 'TQ',
+        'created': _short_date(template.created_at),
+        'updated': _short_date(template.updated_at),
     }
 
 
