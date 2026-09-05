@@ -13,6 +13,7 @@ import type {
   TeamNote,
   TeamProposalDetail,
   TeamProposalRow,
+  TeamReport,
   TeamSettings,
 } from '@/types';
 
@@ -412,6 +413,12 @@ export function downloadTeamFile(fileId: string, filename: string): Promise<void
 export function getTeamClients(): Promise<TeamClientSummary[]> {
   return request<{ clients: TeamClientSummary[] }>('/team/clients', { auth: true })
     .then((d) => d.clients);
+}
+
+// --- Reports page ---
+
+export function getTeamReport(): Promise<TeamReport> {
+  return request<{ report: TeamReport }>('/team/reports', { auth: true }).then((d) => d.report);
 }
 
 // --- Settings ---

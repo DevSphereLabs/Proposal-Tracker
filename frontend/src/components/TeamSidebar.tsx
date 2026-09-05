@@ -24,13 +24,14 @@ const NAV_ITEMS: { label: string; icon: IconComponent; href?: string }[] = [
   { label: 'Proposal', icon: ClipboardIcon, href: '/team' },
   { label: 'Clients', icon: UsersIcon, href: '/team/clients' },
   { label: 'Templates', icon: ClipboardIcon },
-  { label: 'Reports', icon: ChartIcon },
+  { label: 'Reports', icon: ChartIcon, href: '/team/reports' },
   { label: 'Settings', icon: GearIcon, href: '/team/settings' },
 ];
 
 const ACTIVE_BY_PATH: Record<string, string> = {
   '/team/settings': 'Settings',
   '/team/clients': 'Clients',
+  '/team/reports': 'Reports',
 };
 
 // Left-hand navigation for the internal (team-only) pages, per the proposal

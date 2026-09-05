@@ -4,6 +4,8 @@ Reuses the portal's file/message shapes so both dashboards render the same
 data, but exposes the lead's full contact info (the portal never does) and a
 manager-facing status vocabulary.
 """
+from datetime import datetime, timezone
+
 from marshmallow import Schema, fields, validate
 
 from app.blueprints.portal.schemas import _short_date, dump_file, dump_message
@@ -173,6 +175,104 @@ def dump_client_summary(submissions: list) -> dict:
         'lastCreated': _short_date(latest.created_at),
         'lastCreatedSort': latest.created_at.isoformat(),
         'proposals': [dump_client_proposal(s) for s in reversed(by_date)],
+    }
+
+
+def _breakdown(submissions: list, attr: str) -> list:
+    """Count and value per distinct value of `attr`, most common first."""
+    groups = {}
+    for s in submissions:
+        key = (getattr(s, attr) or '').strip() or 'Unspecified'
+        group = groups.setdefault(key, {'label': key, 'count': 0, 'value': 0.0})
+        group['count'] += 1
+        group['value'] += submission_value(s)
+    return sorted(groups.values(), key=lambda g: (-g['count'], g['label']))
+
+
+def dump_report(submissions: list) -> dict:
+    """The Reports page in one payload: totals and values by status, the
+    win rate, averages, the last twelve months, breakdowns by project type
+    and budget range, the top clients by value, and the latest arrivals."""
+    now = datetime.now(timezone.utc)
+
+    by_status = {key: [] for key in MANAGER_STATUS_UPDATE}
+    for s in submissions:
+        by_status[MANAGER_STATUS.get(s.status, 'new')].append(s)
+
+    def total(items):
+        return sum(submission_value(s) for s in items)
+
+    accepted, declined = len(by_status['accepted']), len(by_status['declined'])
+    decided = accepted + declined
+
+    # The last twelve months, oldest first, with empty months kept so the
+    # chart's time axis stays even
+    keys = []
+    year, month = now.year, now.month
+    for back in range(11, -1, -1):
+        m, y = month - back, year
+        while m <= 0:
+            m, y = m + 12, y - 1
+        keys.append((y, m))
+    per_month = {key: {'count': 0, 'value': 0.0} for key in keys}
+    for s in submissions:
+        key = (s.created_at.year, s.created_at.month)
+        if key in per_month:
+            per_month[key]['count'] += 1
+            per_month[key]['value'] += submission_value(s)
+    by_month = [
+        {
+            'month': f'{y}-{m:02d}',
+            'label': datetime(y, m, 1).strftime('%b'),
+            'year': y,
+            **per_month[(y, m)],
+        }
+        for y, m in keys
+    ]
+
+    groups = {}
+    for s in submissions:
+        groups.setdefault(client_key(s), []).append(s)
+    clients = sorted(
+        (dump_client_summary(group) for group in groups.values()),
+        key=lambda c: -c['totalValue'],
+    )[:5]
+
+    recent = sorted(submissions, key=lambda s: s.created_at, reverse=True)[:5]
+    count = len(submissions)
+
+    return {
+        'totals': {'all': count, **{key: len(items) for key, items in by_status.items()}},
+        'value': {
+            'all': total(submissions),
+            # Per status, plus what's still open (new + in progress) and
+            # what's been decided each way
+            'new': total(by_status['new']),
+            'in_progress': total(by_status['in_progress']),
+            'pipeline': total(by_status['new']) + total(by_status['in_progress']),
+            'won': total(by_status['accepted']),
+            'lost': total(by_status['declined']),
+        },
+        # Share of decided proposals that were accepted; None until one is decided
+        'winRate': (accepted / decided) if decided else None,
+        'avgTimelineWeeks': round(sum(s.timeline_weeks for s in submissions) / count, 1) if count else 0,
+        'avgValue': (total(submissions) / count) if count else 0,
+        'byMonth': by_month,
+        'byProjectType': _breakdown(submissions, 'project_type'),
+        'byBudgetRange': _breakdown(submissions, 'budget_range'),
+        'topClients': [
+            {
+                'id': c['id'],
+                'name': c['name'],
+                'company': c['company'],
+                'proposalCount': c['proposalCount'],
+                'totalValue': c['totalValue'],
+                'wonValue': c['wonValue'],
+            }
+            for c in clients
+        ],
+        'recent': [dump_row(s) for s in recent],
+        'generatedAt': _short_date(now),
     }
 
 
