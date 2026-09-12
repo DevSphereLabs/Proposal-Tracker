@@ -4,10 +4,9 @@ Every route requires a valid token, and every query is scoped to the signed-in
 client's own submissions — an ID belonging to another client 404s (never 403,
 so IDs can't be probed).
 """
-import uuid
 from datetime import datetime, timezone
 
-from flask import current_app, jsonify, request, send_file
+from flask import jsonify, request, send_file
 from marshmallow import ValidationError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -25,6 +24,7 @@ from .schemas import (
     profile_update_schema,
     proposal_update_schema,
 )
+from io import BytesIO
 
 def _own_submission(submission_id):
     """The signed-in client's submission, or None (callers 404)."""
@@ -199,17 +199,15 @@ def upload_files(submission_id):
             allowed = ', '.join(sorted(allowed_extensions))
             return jsonify({'error': f'file type not allowed (allowed: {allowed})'}), 400
 
-        stored_name = f'{uuid.uuid4()}.{extension}'
-        path = current_app.config['UPLOAD_DIR'] / stored_name
-        upload.save(path)
+        data = upload.read()
 
         record = ProposalFiles(
             submission_id=submission.id,
             uploader_id=request.user_id,
             original_name=original_name,
-            stored_name=stored_name,
+            content=data,
             content_type=upload.mimetype or 'application/octet-stream',
-            size_bytes=path.stat().st_size,
+            size_bytes=len(data),
         )
         db.session.add(record)
         saved.append(record)
@@ -233,7 +231,7 @@ def download_file(file_id):
         return jsonify({'error': 'not found'}), 404
 
     return send_file(
-        current_app.config['UPLOAD_DIR'] / file.stored_name,
+        BytesIO(file.content),
         as_attachment=True,
         download_name=file.original_name,
         mimetype=file.content_type,
@@ -252,9 +250,7 @@ def delete_file(file_id):
     if not file:
         return jsonify({'error': 'not found'}), 404
 
-    path = current_app.config['UPLOAD_DIR'] / file.stored_name
     db.session.delete(file)
     db.session.commit()
-    path.unlink(missing_ok=True)
 
     return jsonify({'message': 'deleted'}), 200

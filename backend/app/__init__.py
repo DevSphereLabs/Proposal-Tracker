@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 
 from app.config import Config
-from app.extensions import cors, ma
+from app.extensions import cors, ma, migrate
 from app.models import db
 
 
@@ -21,6 +21,7 @@ def create_app(config_class=Config):
         )
 
     db.init_app(app)
+    migrate.init_app(app, db)
     ma.init_app(app)
 
     # Browsers may only call this API from the frontend's origin. The
@@ -36,13 +37,6 @@ def create_app(config_class=Config):
     app.register_blueprint(submissions_bp, url_prefix='/api/submissions')
     app.register_blueprint(portal_bp, url_prefix='/api/portal')
     app.register_blueprint(team_bp, url_prefix='/api/team')
-
-    app.config['UPLOAD_DIR'].mkdir(parents=True, exist_ok=True)
-
-    # Dev convenience until we adopt migrations (Flask-Migrate/Alembic):
-    # create any missing tables on startup.
-    with app.app_context():
-        db.create_all()
 
     @app.get('/api/health')
     def health():
