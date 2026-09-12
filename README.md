@@ -30,6 +30,9 @@ copy .env.example .env         # macOS/Linux: cp .env.example .env
 python -c "import secrets; print(secrets.token_hex(32))"
 # paste that value into SECRET_KEY= in .env
 
+$env:FLASK_APP = "run.py"      # macOS/Linux: export FLASK_APP=run.py
+flask db upgrade               # creates the database schema
+
 python seed.py                 # optional: demo client, proposals, messages, files
 python run.py                  # http://localhost:5000
 ```
