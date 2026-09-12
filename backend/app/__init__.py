@@ -37,7 +37,6 @@ def create_app(config_class=Config):
     app.register_blueprint(portal_bp, url_prefix='/api/portal')
     app.register_blueprint(team_bp, url_prefix='/api/team')
 
-    app.config['UPLOAD_DIR'].mkdir(parents=True, exist_ok=True)
 
     # Dev convenience until we adopt migrations (Flask-Migrate/Alembic):
     # create any missing tables on startup.

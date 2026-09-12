@@ -8,7 +8,6 @@ files/messages) and recreates them, so you always get the same clean state.
 Demo login (client portal):  john@doecorp.com  /  password123
 """
 import base64
-import uuid
 from datetime import datetime, timezone
 
 from werkzeug.security import generate_password_hash
@@ -45,7 +44,7 @@ def get_or_create_user(email, **fields):
     return user
 
 
-def wipe_client_data(client, upload_dir):
+def wipe_client_data(client):
     """Remove the client's submissions and everything hanging off them."""
     submissions = db.session.query(Submissions).where(
         (Submissions.client_id == client.id) | (Submissions.contact_email == client.email)
@@ -53,7 +52,6 @@ def wipe_client_data(client, upload_dir):
 
     for submission in submissions:
         for file in submission.files:
-            (upload_dir / file.stored_name).unlink(missing_ok=True)
             db.session.delete(file)
         for message in submission.messages:
             db.session.delete(message)
@@ -128,19 +126,16 @@ def placeholder_bytes(name):
     return f'Placeholder for {name}\n'.encode()
 
 
-def make_file(submission_id, uploader_id, name, content_type, uploaded_on, upload_dir):
+def make_file(submission_id, uploader_id, name, content_type, uploaded_on):
     """Create a placeholder file on disk plus its metadata row."""
-    ext = name.rsplit('.', 1)[-1].lower()
-    stored_name = f'{uuid.uuid4()}.{ext}'
-    path = upload_dir / stored_name
-    path.write_bytes(placeholder_bytes(name))
+    data = placeholder_bytes(name)
     return ProposalFiles(
         submission_id=submission_id,
         uploader_id=uploader_id,
         original_name=name,
-        stored_name=stored_name,
+        content=data,
         content_type=content_type,
-        size_bytes=path.stat().st_size,
+        size_bytes=len(data),
         created_at=uploaded_on,
     )
 
@@ -148,8 +143,7 @@ def make_file(submission_id, uploader_id, name, content_type, uploaded_on, uploa
 def seed():
     app = create_app()
     with app.app_context():
-        upload_dir = app.config['UPLOAD_DIR']
-        upload_dir.mkdir(parents=True, exist_ok=True)
+        
 
         # The team account authors "team" messages and uploads team files.
         team = get_or_create_user(
@@ -172,7 +166,7 @@ def seed():
         )
         db.session.flush()
 
-        wipe_client_data(john, upload_dir)
+        wipe_client_data(john)
 
         # --- Active: E-commerce Website (matches the mockup) ---
         ecommerce = Submissions(
@@ -196,8 +190,8 @@ def seed():
             Projects(submission_id=ecommerce.id, title='E-commerce Website', updated_at=dt(2026, 6, 18)),
             Proposals(submission_id=ecommerce.id, scope='Full e-commerce build', price=5000,
                       created_at=dt(2026, 6, 15), updated_at=dt(2026, 6, 18)),
-            make_file(ecommerce.id, john.id, 'Logo.jpg', 'image/jpeg', dt(2026, 6, 17), upload_dir),
-            make_file(ecommerce.id, john.id, 'Banner.jpg', 'image/jpeg', dt(2026, 6, 17), upload_dir),
+            make_file(ecommerce.id, john.id, 'Logo.jpg', 'image/jpeg', dt(2026, 6, 17)),
+            make_file(ecommerce.id, john.id, 'Banner.jpg', 'image/jpeg', dt(2026, 6, 17)),
             ProposalMessages(submission_id=ecommerce.id, sender_id=team.id,
                              body='Contact client to confirm start date', created_at=dt(2026, 6, 19)),
             ProposalMessages(submission_id=ecommerce.id, sender_id=john.id,
@@ -225,7 +219,7 @@ def seed():
             Projects(submission_id=mobile.id, title='Mobile App', updated_at=dt(2026, 7, 2)),
             Proposals(submission_id=mobile.id, scope='iOS + Android companion app', price=12000,
                       created_at=dt(2026, 7, 1), updated_at=dt(2026, 7, 2)),
-            make_file(mobile.id, team.id, 'Wireframes.pdf', 'application/pdf', dt(2026, 7, 1), upload_dir),
+            make_file(mobile.id, team.id, 'Wireframes.pdf', 'application/pdf', dt(2026, 7, 1)),
             ProposalMessages(submission_id=mobile.id, sender_id=team.id,
                              body='Wireframes attached - design review starts this week', created_at=dt(2026, 7, 2)),
         ])
@@ -248,7 +242,7 @@ def seed():
             Projects(submission_id=brand.id, title='Brand Refresh', updated_at=dt(2026, 5, 30)),
             Proposals(submission_id=brand.id, scope='Logo + style guide', price=3000,
                       created_at=dt(2026, 5, 20), updated_at=dt(2026, 5, 30)),
-            make_file(brand.id, john.id, 'StyleGuide.pdf', 'application/pdf', dt(2026, 5, 28), upload_dir),
+            make_file(brand.id, john.id, 'StyleGuide.pdf', 'application/pdf', dt(2026, 5, 28)),
             ProposalMessages(submission_id=brand.id, sender_id=team.id,
                              body='Final style guide delivered. Thanks for working with us!', created_at=dt(2026, 5, 30)),
         ])
