@@ -1,0 +1,28 @@
+# Render blueprint for the Flask API. The Next.js frontend deploys separately
+# on Vercel and reaches this service through its /api/* rewrite.
+services:
+  - type: web
+    name: proposal-tracker-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Migrations run before the server binds, so a schema change applies once
+    # on startup rather than needing a manual step.
+    startCommand: flask db upgrade && gunicorn run:app --bind 0.0.0.0:$PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      # `flask db upgrade` in startCommand needs to find the app factory
+      - key: FLASK_APP
+        value: run.py
+      # create_app() refuses to boot without this; let Render generate it
+      - key: SECRET_KEY
+        generateValue: true
+      # Neon connection string - direct endpoint, not the pooler
+      - key: DATABASE_URL
+        sync: false
+      # Set by hand to the Vercel URL once the frontend is deployed
+      - key: FRONTEND_ORIGIN
+        sync: false
