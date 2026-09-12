@@ -6,3 +6,5 @@ marshmallow-sqlalchemy>=1.0
 python-jose>=3.3
 Flask-Cors>=6.0
 python-dotenv>=1.0
+gunicorn>=21.2
+psycopg[binary]>=3.1
