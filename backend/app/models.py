@@ -113,10 +113,9 @@ class ProposalMessages(Base):
 
 
 class ProposalFiles(Base):
-    """A document uploaded to a submission's file manager.
-
-    Content lives on disk under UPLOAD_DIR as `stored_name` (a UUID we
-    generate, never the client's filename); this row holds the metadata.
+    """
+    A document uploaded to a submission's file manager.
+    The file's bytes live in `content`; the rest of the row is metadata.
     """
     __tablename__ = 'proposal_files'
 
@@ -124,7 +123,7 @@ class ProposalFiles(Base):
     submission_id: Mapped[str] = mapped_column(String, ForeignKey('submissions.id'), nullable=False)
     uploader_id: Mapped[str] = mapped_column(String, ForeignKey('users.id'), nullable=False)
     original_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    stored_name: Mapped[str] = mapped_column(String(300), nullable=False, unique=True)
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

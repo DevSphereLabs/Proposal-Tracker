@@ -3,10 +3,9 @@
 Every route is team-only (MEMBER/ADMIN). Unlike the portal, queries are not
 scoped to one client — the team sees and manages every submission.
 """
-import uuid
 from datetime import datetime, timezone
 
-from flask import current_app, jsonify, request, send_file
+from flask import jsonify, request, send_file
 from marshmallow import ValidationError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -36,6 +35,7 @@ from .schemas import (
     template_create_schema,
     template_update_schema,
 )
+from io import BytesIO
 
 
 def _submission_or_none(submission_id):
@@ -199,7 +199,6 @@ def delete_proposal(submission_id):
     # No DB-level cascades configured, so remove children explicitly —
     # uploaded files come off disk too
     for file in submission.files:
-        (current_app.config['UPLOAD_DIR'] / file.stored_name).unlink(missing_ok=True)
         db.session.delete(file)
     for message in submission.messages:
         db.session.delete(message)
@@ -400,17 +399,15 @@ def upload_files(submission_id):
             allowed = ', '.join(sorted(allowed_extensions))
             return jsonify({'error': f'file type not allowed (allowed: {allowed})'}), 400
 
-        stored_name = f'{uuid.uuid4()}.{extension}'
-        path = current_app.config['UPLOAD_DIR'] / stored_name
-        upload.save(path)
+        data = upload.read()
 
         record = ProposalFiles(
             submission_id=submission.id,
             uploader_id=request.user_id,
             original_name=original_name,
-            stored_name=stored_name,
+            content=data,
             content_type=upload.mimetype or 'application/octet-stream',
-            size_bytes=path.stat().st_size,
+            size_bytes=len(data),
         )
         db.session.add(record)
         saved.append(record)
@@ -428,7 +425,7 @@ def download_file(file_id):
         return jsonify({'error': 'not found'}), 404
 
     return send_file(
-        current_app.config['UPLOAD_DIR'] / file.stored_name,
+        BytesIO(file.content),
         as_attachment=True,
         download_name=file.original_name,
         mimetype=file.content_type,
@@ -442,9 +439,7 @@ def delete_file(file_id):
     if not file:
         return jsonify({'error': 'not found'}), 404
 
-    path = current_app.config['UPLOAD_DIR'] / file.stored_name
     db.session.delete(file)
     db.session.commit()
-    path.unlink(missing_ok=True)
 
     return jsonify({'message': 'deleted'}), 200
